@@ -1,273 +1,526 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+Dialogflow CX: Parameter Manipulation
+experiment
+Lab
+schedule
+1 hour 10 minutes
+universal_currency_alt
+No cost
+show_chart
+Introductory
+info
+This lab may incorporate AI tools to support your learning.
+GSP949
+Google Cloud self-paced labs logo
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
+Overview
+As you start to give your virtual agent the ability to have more dynamic conversations, some of the more advanced features of Dialogflow CX can make your agent even more conversational. In this lab you'll learn how to use some advanced features of Dialogflow CX to enhance the conversational experience of your virtual agent. You'll learn how to add the ability for a user to check a flight's status through the virtual agent by providing a confirmation number and connect the 'Book a Flight' scenario into a new Anything else? page so that the agent is always ready to handle another request from the user.
 
-## GSP087
+Objectives
+By the end of this lab, you will be able to:
 
-### Overview
+Use regular expressions to do parameter validation (e.g., on a PNR Number).
+Reset parameters to null when the user starts a new flow of conversation.
+Prerequisites
+This lab builds upon the basic Flight Booker agent developed in Dialogflow CX: Bot Building Basics and therefore assumes knowledge of Dialogflow CX elements such as intents, entities, training phrases, flows, and pages. Building upon these basics, this lab will implement more advanced conversational techniques using some advanced features of Dialogflow CX. Though taking the earlier lab first is recommended, proceed if you are already familiar with Dialogflow CX and its fundamental features and usage.
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Setup and requirements
+Before you click the Start Lab button
+Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click Start Lab, shows how long Google Cloud resources will be made available to you.
 
-#### Application architecture
+This hands-on lab lets you do the lab activities yourself in a real cloud environment, not in a simulation or demo environment. It does so by giving you new, temporary credentials that you use to sign in and access Google Cloud for the duration of the lab.
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+To complete this lab, you need:
 
-The script reports a numeric value to a Cloud monitoring metric.
+Access to a standard internet browser (Chrome browser recommended).
+Note: Use an Incognito or private browser window to run this lab. This prevents any conflicts between your personal account and the Student account, which may cause extra charges incurred to your personal account.
+Time to complete the lab---remember, once you start, you cannot pause a lab.
+Note: If you already have your own personal Google Cloud account or project, do not use it for this lab to avoid extra charges to your account.
+How to start your lab and sign in to the Google Cloud console
+Click the Start Lab button. If you need to pay for the lab, a pop-up opens for you to select your payment method. On the left is the Lab Details panel with the following:
 
-You do not need to know Node.js or JavaScript for this lab.
+The Open Google Cloud console button
+Time remaining
+The temporary credentials that you must use for this lab
+Other information, if needed, to step through this lab
+Click Open Google Cloud console (or right-click and select Open Link in Incognito Window if you are running the Chrome browser).
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+The lab spins up resources, and then opens another tab that shows the Sign in page.
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+Tip: Arrange the tabs in separate windows, side-by-side.
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+Note: If you see the Choose an account dialog, click Use Another Account.
+If necessary, copy the Username below and paste it into the Sign in dialog.
 
-The application includes the following components:
+student-01-8f3bfee8cc00@qwiklabs.net
+Copied!
+You can also find the Username in the Lab Details panel.
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+Click Next.
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+Copy the Password below and paste it into the Welcome dialog.
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+aJtMS3H9ann3
+Copied!
+You can also find the Password in the Lab Details panel.
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
+Click Next.
 
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
+Important: You must use the credentials the lab provides you. Do not use your Google Cloud account credentials.
+Note: Using your own Google Cloud account for this lab may incur extra charges.
+Click through the subsequent pages:
 
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
+Accept the terms and conditions.
+Do not add recovery options or two-factor authentication (because this is a temporary account).
+Do not sign up for free trials.
+After a few moments, the Google Cloud console opens in this tab.
 
-#### Objectives
+Note: To view a menu with a list of Google Cloud products and services, click the Navigation menu at the top-left. Navigation menu icon
+Task 1. Getting started with Dialogflow CX
+In this task, you'll get logged into Dialogflow CX and create a new agent.
 
-In this lab, you will learn how to perform the following tasks:
+Note: Name your virtual agent 'Flight Booker - Parameter Manipulation' when you get to that point in the steps.
+Assumption: You've already logged into Google Cloud before continuing with the steps below.
 
-- Deploy an autoscaling Compute Engine instance group.
+In an new incognito window, navigate to Dialogflow.
 
-- Create a custom metric used to scale the instance group.
+Click on Sign-in with Google.
 
-- Use the Cloud Console to visualize the custom metric and instance group size.
+Select the student account that you started the lab with.
 
-### Task 1. Creating the application
+Next, you explicitly specify that you want to use Dialogflow CX instead of Dialogflow ES.
 
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
+In the menu bar at the left, click on Dialogflow CX.
 
-#### Uploading the script files to Cloud Storage
+A new page for Dialogflow CX opens and a blue Dialogflow icon appears. On this page, you should see a pop-up asking you to select a project.
 
-During autoscaling, the instance group will need to create new Compute Engine instances.
+Search the list in the pop-up for the project that matches your assigned Project ID for this lab. Click on your project ID.
 
-When it does, it creates the instances based on an instance template.
+Note: If you don't see your Project ID listed, look at the user on the right side to confirm that you are using Dialogflow CX as "student".
+Dialogflow CX title bar highlighting the project box and the user avatar
 
-Each instance needs a startup script.
+You will now see a page telling you "To use Dialogflow CX with this project, enable the following APIs".
 
-Therefore, the template needs a way to reference the startup script.
+Click on Enable API.
 
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
+It shouldn't take more than half a minute or so for this activity to complete.
 
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
+If it seems this task is taking a long time, refresh the page.
 
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
+Once complete, you will be on the Dialogflow CX Agents page.
 
-### Task 2. Create a bucket
+Click on Create agent.
 
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
+If prompted with Get started with Dialogflow CX click Build your own.
 
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
+Enter a name for the agent (e.g., "Cloudio-cx").
 
-Accept the default values then click **Create**.
+Set the location to us-west1.
 
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
+Ensure timezone and default language are set appropriately.
 
-When the bucket is created, the **Bucket details** page opens.
+Click Create.
 
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
+Once the agent is created, you will see the design and configuration portion of the Dialogflow CX UI.
 
-```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
-```
+Click Check my progress to verify the objective.
+Create an Agent
 
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
+Task 2. Importing a .blob virtual agent file
+In this task, you will import a virtual agent from an earlier lab.
 
-#### Understanding the code components
+Select View all agents from the Agent dropdown menu at the top.
 
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
+Click the context menu (three vertical dots) to the right of your virtual agent.
 
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
+Select Restore from the expanded menu options.
 
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
+Select the Cloud Storage radio button if not already selected.
 
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
+Enter gs://spls/DialogflowCX_agents/gsp929-start-agent.blob for URI.
 
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
+Click Restore.
 
-### Task 3. Creating an instance template
+Refer to the Dialogflow CX "restore" documentation as needed.
 
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
+Now you have a virtual agent that has everything completed from the earlier lab.
 
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
+Note: If you'd like to retain a copy of the sample agent, download gsp929-start-agent.blob to your local hard drive.
+Click Check my progress to verify the objective.
+Importing a virtual agent file
 
-Click **Create Instance Template** at the top of the page.
+Check your knowledge
 
-Name the instance template `autoscaling-instance01`.
+Why do you have to enable the Dialogflow API?
 
-Set **Location** as **Global**.
+A service ticket will be created and a on-site engineer will manually provision a Dialogflow instance for you
 
-Scroll down, click **Advanced options**.
+The virtual agent needs to use webhook to invoke external APIs.
 
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
+Most Google Cloud services in a new project needs to be explicitly enabled before you may gain access to it.
 
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
+Verify the restored agent
+Confirm the following pages and intents appear in your virtual agent:
 
-Click **Create**.
+Pages:
 
-### Task 4. Creating the instance group
+Start
+Ticket information
+Confirm trip
+Intents:
 
-In the left pane, click **Instance groups**.
+Default Welcome Intent
+Default Negative Intent
+main.book_a_flight
+confirmation.yes
+confirmation.no
+Task 3. Add functionality for checking flight status
+Now you'll add the ability for a user to speak to your agent to check flight status. You'll add a custom regex entity to capture the user's booking reference, also known as the Passenger Name Record (PNR) number. Regex (Regular Expression) is chosen because it's easy to specify a fixed format for the PNR - the advantage is built-in error checking.
 
-Click **Create instance group** at the top of the page.
+Create a custom Regex entity for booking reference (PNR Number)
+Across the airline industry, a PNR is used to capture the basic information for a passenger and their flight details. Every PNR record has a unique reference identifier made up of alphanumeric (letters and numeric digits) characters and a length of five or six characters.
 
-**Name**: `autoscaling-instance-group-1`.
+Naturally, when an end user provides a PNR number, you should validate that it conforms to the rules of a PNR number. Do this with a custom Regex entity.
 
-For **Instance template**, select the instance template you just created.
+Click on the Manage tab.
 
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
+Click on Entity Types in the menu on the left.
 
-Set **Autoscaling mode** to **Off: do not autoscale**.
+Click + Create.
 
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
+Enter PNR_Number in the Display name text box for the entity.
 
-Click **Create**.
+Check the Regexp entities box.
 
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
+Enter ^[a-zA-Z0-9]{5,6}$ in the Add value text box under Entity.
 
-### Task 5. Verifying that the instance group has been created
+What does this regex expression actually mean? The bracketed characters, [a-zA-Z0-9], mean that any letter regardless of case or digit will match. The {5,6} means the value must be five or six characters in length. The $ asserts that we are at the end of the string.
 
-Wait to see the green check mark next to the new instance group you just created.
+For instance, we may have a PNR of XCr942 or 1f38C.
 
-It might take the startup script several minutes to complete installation and begin reporting values.
+There are lots of regex resources online if you need to construct something a little different for your needs.
 
-Click Refresh if it seems to be taking more than a few minutes.
+Click Save.
 
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
+Your entity should look like the following when you click on it:
 
-### Task 6. Verifying that the Node.js script is running
+The Entity type page displaying the highlighted entity value and selected Regexp entities checkbox
 
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
+Create intents and pages for the flight status functionality
+With the @PNR_Number custom entity created, we will now create the intents and pages that make up this flight status check conversational flow.
 
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
+Click on Intents in the menu on the left.
 
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
+Click + Create.
 
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
+Enter main.flight_status in the Display name.
 
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
+Add training phrases such as the following:
 
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
+Phrases	Annotations
+PNR K4P89E, what is the flight status?	K4P89E
+My PNR is Z453K9, is it still on time?	Z453K9
+Is my flight on time?	n/a
+What is my flight status?	n/a
+I would like to know if my flight is still on time	n/a
+Check flight status	n/a
+Note: The PNR_Number entities should be automatically slot-filled by Dialogflow. If they aren't, you can manually annotate them by selecting and choosing the @PNR_Number entity.
+Ensure the PNR examples in the training phrases are annotated correctly to indicate @PNR_Number and NOT @sys.number (system entity):
 
-Add `"nodeapp"` as line 3, so the code looks similar to this:
+You do this by selecting the text and, using the filter, search for "PNR".
+Then select the correct entity (@PNR_Number). Make sure the whole thing is selected, not just a portion of it. This helps Dialogflow understand the format it should be looking for.
+It should look like the following when you're done:
 
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
-```
+The Training phrases page with the highlighted PNR number
 
-Click **Run query**.
+Notice PNR_Number listed in the parameter section at the bottom of the intent configuration page. If this were sensitive data, we might have chosen the Redact in log option.
 
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
+Click Save.
 
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
+Set up the Start page
+Next, you'll update the Start page with a new route using the main.flight_status intent and create the subsequent pages to complete this new conversational flow. Adding intents and their routes in the Start page ensures a user's request is recognized and can trigger Dialogflow to react correctly from anywhere in the flow.
 
-### Task 7. Configure autoscaling for the instance groups
+Click on Build to view the overall flow.
 
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
+Click on the Start page.
 
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
+Click on + to the right of Routes in the upper right.
 
-Click the `autoscaling-instance-group-1` group.
+Select main.flight_status from the Intent dropdown menu.
 
-Click **Edit**.
+Scroll down to the Transition section.
 
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
+Ensure that the Page radio button is enabled.
 
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
+Select +new Page from the Page dropdown menu.
 
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
+Enter Check flight status in the Page name box.
 
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
+Click Save.
 
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
+Close the routes configuration pane as needed to view the flow pane again.
 
-- Click **Apply**.
+Notice the main.flight_status intent shows up in the list of routes for the Start page. In the flow pane, there's an arrow going from the Start to the Check flight status page.
 
-- **Utilization target**: `150`
+Click on the Check flight status page.
 
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
+Click on + to the right of Parameters.
 
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
+Enter pnr_num for the Display name.
 
-- **Utilization target type**: `Gauge`. Click **Select**.
+Select @PNR_Number from the dropdown for the Entity type.
 
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
+Click to enable Required if not already.
 
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
+Your parameter should look like the following:
 
-Click **Save**.
+The Parameter page displaying the highlighted Display name, entity type, and required checkbox
 
-### Task 8. Watching the instance group perform autoscaling
+Scroll down to the Initial prompt fulfillment section.
 
-The Node.js script varies the custom metric values it reports from each instance over time.
+Enter What is your flight booking reference please? under Agent says.
 
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
+Click Save.
 
-If the value goes down, the instance group detects this and scales down by removing instances.
+Close the Parameter configuration pane as needed to view the flow pane again.
 
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
+Click + to the right of Routes in the Check flight status page.
 
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
+Scroll down to the Condition section.
 
-- In the left pane, click **Instance groups**.
+Enter $page.params.status for the Parameter.
 
-- Click the `builtin-igm` instance group in the list.
+Ensure = is selected for the Operand.
 
-- Click the **Monitoring** tab.
+Enter FINAL for the Value.
 
-- Enable **Auto Refresh**.
+Your condition should look similar to the following:
 
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
+The condition page displaying the highlighted parameter, operand, and value
 
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
+Note: Did you notice some quotes around the word FINAL in the screenshot? The value of FINAL is acceptable with or without quotes, i.e., FINAL or "FINAL". This is because it's a single word without spaces. When you have more than one word it's best to use quotes. For instance, "Flight Status".
+The condition expression, "$page.params.status = FINAL", tells Dialogflow that, once your parameters have been successfully captured from the user, there's nothing further to do on this page.
 
-Hover your mouse over the graphs to see more details.
+Scroll down to the Transition section.
 
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
+Select + new Page from the Page dropdown.
 
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
+Enter Confirm flight status for the Page name.
 
-### Task 9. Autoscaling example
+Click Save.
 
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
+Set up the Confirm flight status page
+Click on the Confirm flight status page.
 
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
+Click on Edit fulfillment.
 
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
+Enter a message under Agent says such as the following:
 
-While your autoscaling starts up, read through this graph to understand what will be happening.
+Looking up your flight reference $session.params.pnr_num, we are pleased to confirm that your flight is on time and will depart LAX at 10am for NYC.  Please arrive at least 1.5 hours before departure.
 
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
+Would you like to make any changes to your flight?
+Copied!
+Note: You will notice that all of the flight status queries in your testing will result in this same static message. How could you implement a dynamic lookup of flight status information? Through the webhook capability where Dialogflow CX will call an external API, provide the PNR reference, and retrieve the actual flight status.
+To use a webhook, you would enable the webhook checkbox. However, it is outside the scope of this lab as we are focused on the topic of conversational design. This is mentioned for completeness and to provide a pointer for your further learning.
+Click Save.
 
-### Congratulations
+Click + to the right of Routes. Recall that you may need to close out the right-hand pane configuration window to see this.
+
+Select confirmation.yes from the Intent dropdown.
+
+Scroll down to the Fulfillment section.
+
+Enter Our agents will be in touch soon for your request to amend your scheduled flight. under Agent says.
+
+Scroll down to the Transition section.
+
+Select +new Page from the Page dropdown.
+
+Enter Anything else? for the Page name.
+
+Click Save.
+
+Add another route, this time selecting confirmation.no from the Intent dropdown.
+
+Add a message for this route; Great, we look forward to having you fly with us soon..
+
+Add a transition to the same Anything else? page that you created.
+
+Click Save.
+
+Set up the Anything else? page
+Click on the Anything else? page.
+
+Click to open the Entry fulfillment.
+
+Enter Have you any further queries for me? for the Agent says.
+
+Click Save.
+
+Click + to add a route from the Anything else? page.
+
+Select confirmation.yes from the Intent dropdown.
+
+Enter Please let me know how I can be of service. for the Agent says under Fulfillment.
+
+Select Start for the Page under the Transition section.
+
+Click Save.
+
+Add another route, this time specifying the confirmation.no intent.
+
+Enter No worries, I'm glad to be of assistance today. Goodbye. for the Agent says under Fulfillment.
+
+Choose End Session page as the transition.
+
+Click Save.
+
+Task 4. Testing your virtual agent
+Part 1 (positive tests)
+Click on Test Agent to open the test simulator.
+
+Ideally you have defined some test data with expected results. One way you can organize your test data is in the order of progression of the conversation, much like you see in a chat bot conversation.
+
+Proceed to performing a round of testing on your agent similar to the test data below.
+
+Who	Message
+User	Check flight status
+Agent	What is your flight booking reference please?
+User	1234
+Agent	What is your flight booking reference please?
+User	abcdefghijk
+Agent	What is your flight booking reference please?
+User	P34K09
+Agent	Looking up your flight reference P34K09, ...
+User	no
+Agent	Great, we look forward to having you fly with us soon. Have you any further...
+User	no
+Agent	No worries, I'm glad to be of assistance today. Goodbye.
+Notice that the test data deliberately uses 1234 (too short) and abcdefghijk (too long) before using a valid PNR number, P34K09. Because of the regex expression you defined, the first two values entered by the user are considered invalid PNR numbers. Therefore, the agent keeps asking until it can fulfill the parameter status condition (FINAL) and transition to the next page.
+
+Note: If you make any mistakes in your testing, you can always reset the test using the trash icon in the upper right of the Test Agent.
+Notice in the simulator pane that there is some data about the conversation. For instance, the flow of pages, intents matched, parameters and their filled values.
+
+Click on the reset icon to clear the current test data. It's a good habit to do this after every complete test round unless you want to repeat the same test again (using the recycle icon).
+
+Part 2 (negative tests)
+Now, instead of responding No when the flow gets to the Anything else? page, you'll respond Yes.
+
+Start another round of testing on your agent, this time a negative test. For instance:
+
+Who	Message
+User	Check flight status
+Agent	What is your flight booking reference please?
+User	PN34K5
+Agent	Looking up your flight reference PN34K5, ...
+User	no
+Agent	Great, we look forward to having you fly with us soon. Have you any further...
+User	yes
+Agent	Please let me know how I can be of service
+User	check flight status
+Agent	Looking up your flight reference PN34K5, ...
+Note: Did you notice that when you requested to check flight status the second time, you weren't prompted for the PNR? That's not the expected response for this scenario where the user wants to look up a different record.
+What happened? Well, Dialogflow remembered the number entered earlier. To make it work for this scenario, you'll need to reset, or nullify, the pnr_num parameter.
+Click Check my progress to verify the objective.
+Testing your virtual agent
+
+Task 5. Resetting parameters
+Click on the Anything else? page.
+
+Click on the Entry fulfillment field to open the Fulfillment configuration pane.
+
+Scroll down to the Parameter presets section.
+
+Click Add a parameter.
+
+Enter pnr_num for the Parameter name under Parameter presets.
+
+Enter null for the Value.
+
+Click Save.
+
+Run through your tests again to ensure all parameters are reset to null so that the agent will reprompt for new values when the conversation starts over.
+
+Your Anything else? page should look like the following:
+
+The Anything else? page displaying the highlighted entry fulfillment field and parameter presets section
+
+Connect the Anything else? page to the Confirm trip page
+The Anything else? page can be reused for the flight booking conversational flow that you imported at the start of this lab. The expected outcome is our virtual agent is able to continue the conversation if required by the user at the end of their queries.
+
+Click on the Confirm trip page.
+
+Click on the confirmation.yes route.
+
+Add a transition to the Anything else? page.
+
+Click Save.
+
+Run through the check flight status tests again to ensure the pnr_num parameter is reset to null so that the agent will reprompt for a new value when the user wants to check a different flight.
+
+Note: Click on the reset icon in the Test Agent pane to make sure your next test scenario starts fresh.
+Now run through the flight booking test scenario to completion and book the flight. Answer, Yes, when you reach the Anything else? portion of the flow and start a new flight booking.
+
+Note: What worked and what didn't? You may have noticed that the agent remembers the flight details from your previous booking and does not bother asking you again. Is this the correct behavior?
+Just like in the check flight status scenario, you will want to reset the flight booking parameters to null.
+
+Click on the Anything else? page.
+
+Click on Entry fulfillment.
+
+Add parameters as follows, setting them to null like you did with the pnr_num:
+
+Parameter	Value
+departure_city	null
+destination_city	null
+departure_date	null
+return_date	null
+passenger_name	null
+Click Save.
+
+Run through the tests again to ensure all parameters are reset to null when you answer No to the question on whether the information is correct.
+
+Knowledge check
+
+
+A custom regex entity is useful for which of the following data types?
+
+A custom size entity with fixed values (e.g., small, medium, large).
+
+A custom alphanumeric entity that conforms to a pattern.
+
+A system date entity.
+
+
+In what scenario is it required to reset parameters captured during the conversation?
+
+When additional values need to be captured and you no longer need the previously captured data for the conversation.
+
+Parameters never need to be reset because the AI in Dialogflow will figure it out.
+
+Parameters should always be reset.
+
+Export your agent
+If you want to export your virtual agent to use in your own project, use the following steps:
+
+Select View all agents from the Agent dropdown at the top.
+
+Click on the context menu (three vertical dots More icon) and choose Export.
+
+Click on the Download radio button.
+
+Click Export.
 
 Congratulations!
+You now know how to use regular expressions to do parameter validation on a PNR Number and reset parameters to null when the user starts a new flow of conversation.
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Finish your quest
+This self-paced lab is part of the Create Conversational AI Agents with Dialogflow CX quest. A quest is a series of related labs that form a learning path. Completing this quest earns you a badge to recognize your achievement. You can make your badge or badges public and link to them in your online resume or social media account. Enroll in this quest or any quest that contains this lab and get immediate completion credit. See the Google Cloud Skills Boost catalog to see all available quests.
 
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+Google Cloud training and certification
+...helps you make the most of Google Cloud technologies. Our classes include technical skills and best practices to help you get up to speed quickly and continue your learning journey. We offer fundamental to advanced level training, with on-demand, live, and virtual options to suit your busy schedule. Certifications help you validate and prove your skill and expertise in Google Cloud technologies.
+
+Manual Last Updated October 26, 2023
+
+Lab Last Tested October 27, 2023
+
+Copyright 2024 Google LLC All rights reserve

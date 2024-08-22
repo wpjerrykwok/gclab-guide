@@ -1,635 +1,890 @@
----
-title: "Walkthrough... Working with JSON, Arrays, and Structs in BigQuery (GSP416)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+# Deploy Go Apps on Google Cloud Serverless Platforms
 
-# Working with JSON, Arrays, and Structs in BigQuery
-
-## GSP416
+## GSP702
 
 ### Overview
 
-BigQuery is Google's fully managed, NoOps, low cost analytics database. 
+Go is an open source programming language by Google that makes it easy to build fast, reliable, and efficient software at scale. 
 
-With BigQuery you can query terabytes and terabytes of data without having any infrastructure to manage or needing a database administrator. 
+In this lab you explore the basics of Go by deploying a simple Go app to Cloud Run, Cloud Functions, and App Engine. 
 
-BigQuery uses SQL and can take advantage of the pay-as-you-go model. 
-
-BigQuery allows you to focus on analyzing data to find meaningful insights.
-
-In this lab, you work in-depth with semi-structured data (ingesting JSON, Array data types) inside of BigQuery. 
-
-Denormalizing your schema into a single table with nested and repeated fields can yield performance improvements, but the SQL syntax for working with array data can be tricky. 
-
-You will practice loading, querying, troubleshooting, and unnesting various semi-structured datasets.
+You then use the Go app to access data in BigQuery and Firestore.
 
 #### What you'll do
 
-In this lab, you learn how to:
+In this lab, you perform the following:
 
-- Load and query semi-structured data including unnesting.
+- Set up your Firestore Database and import data
+- Get an introduction to the power of Cloud Build
+- Explore data in BigQuery and Firestore
+- Deploy a Go app to App Engine, Cloud Run, and Cloud Functions
+- Examine the Go app code
+- Test the app on the each of the platforms
 
-- Troubleshoot queries on semi-structured data.
+### What is Go?
 
-### Task 1. Create a new dataset to store the tables
+Go (golang) is a general-purpose language designed with systems programming in mind. 
 
-In your BigQuery, click the three dots next to your Project ID and select **Create dataset**.
+It is strongly typed and garbage-collected and has first class support for concurrent programming.
 
-Name the new dataset `fruit_store`. Leave the other options at their default values (Data Location, Default Expiration).
+Programs are constructed from packages, whose properties allow efficient management of dependencies.
 
-Click **Create dataset**.
+Unlike Python and Javascript, Go is compiled not interpreted. 
 
-### Task 2. Practice working with arrays in SQL
+Go source code is compiled into machine code before execution. 
 
-Normally in SQL you will have a single value for each row like this list of fruits below:
+As a result, Go is typically faster and more efficient than interpreted languages and requires no installed runtime like Node, Python, or JDK to execute.
 
-Row | Fruit
-1 | raspberry
-2 | blackberry
-3 | strawberry
-4 | cherry
+### Serverless platforms
 
-What if you wanted a list of fruit items for each person at the store? It could look something like this:
+Serverless computing enables developers to focus on writing code without worrying about infrastructure. 
 
-Row|Fruit|Person
-1|raspberry|sally
-2|blackberry|sally
-3|strawberry|sally
-4|cherry|sally
-5|orange|frederick
-6|apple|frederick
+It offers a variety of benefits over traditional computing, including zero server management, no up-front provisioning, auto-scaling, and paying only for the resources used. 
 
-In traditional relational database SQL, you would look at the repetition of names and immediately think of splitting the above table into two separate tables: Fruit Items and People. 
+These advantages make serverless ideal for use cases like stateless HTTP applications, web, mobile, IoT backends, batch and stream data processing, chatbots, and more.
 
-That process is called normalization (going from one table to many). 
+Go is perfect for cloud applications because of its efficiency, portability, and how easy it is to learn. 
 
-This is a common approach for transactional databases like mySQL.
+This lab shows you how to use Cloud Build to deploy a Go app to the Cloud Run, Cloud Functions, and App Engine, all Google serverless platforms:
 
-For data warehousing, data analysts often go the reverse direction (denormalization) and bring many separate tables into one large reporting table.
+- Cloud Run
+- Cloud Functions
+- App Engine
 
-Now, you're going to learn a different approach that stores data at different levels of granularity all in one table using repeated fields:
+> Note: Refer to Serverless Options for information on which serverless platform is best adapted for your needs.
 
-- It's only two rows.
+#### Cloud Build
 
-- There are multiple field values for Fruit in a single row.
+Cloud Build is a service that executes your builds on Google Cloud infrastructure. 
 
-- The people are associated with all of the field values.
+Cloud Build can import source code from Cloud Storage, Cloud Source Repositories, GitHub, or Bitbucket, execute a build to your specifications, and produce artifacts such as Docker containers.
 
-What the key insight? The `array` data type!
+Cloud Build executes your build as a series of build steps, where each build step is run in a Docker container. 
 
-An easier way to interpret the Fruit array:
+A build step can do anything that a container can do irrespective of the environment. 
 
-Row|Fruit (array)|Person
-1|[raspberry, blackberry, strawberry, cherry]|sally
-2|[orange, apple]|frederick
+For more information, refer to the Cloud Build documentation.
 
-Both of these tables are exactly the same. There are two key learnings here:
+#### Cloud Run
 
-- An array is simply a list of items in brackets [ ]
+Cloud Run is a fully managed compute platform that automatically scales your stateless containers.
 
-- BigQuery visually displays arrays as flattened. It simply lists the value in the array vertically (note that all of those values still belong to a single row)
+Cloud Run is serverless; it abstracts away all infrastructure management, so you can focus on what matters most—building great applications.
 
-Enter the following in the BigQuery Query Editor:
+##### Architecture
 
-```sql
-#standardSQL
-SELECT
-['raspberry', 'blackberry', 'strawberry', 'cherry'] AS fruit_array
+When you deploy your sample Go app, Google Cloud Data Drive, to Cloud Run, the data flow architecture looks like this:
+
+Go Web App on Cloud Run architecture diagram
+
+#### Cloud Functions
+
+Cloud Functions is Google Cloud's event-driven serverless compute platform. 
+
+Because Go compiles to a machine code binary, has no dependent frameworks to start, and does not require an interpreter, Go cold start time is between 80 and 1400ms. 
+
+This means that the applications and services can remain dormant without costing anything, and then startup and start cold serving traffic in 1400ms or less. 
+
+After this initial start, the function serves traffic instantly. 
+
+This factor alone makes Go an ideal language for a Cloud Functions deployment.
+
+##### Architecture
+
+When you deploy your sample Go app, Google Cloud Data Drive, to Cloud Functions, the data flow architecture looks like this:
+
+Go Web App on Cloud Run architecture diagram
+
+#### App Engine
+
+The App Engine standard environment is based on container instances running on Google's infrastructure. 
+
+Containers are preconfigured with one of several available runtimes.
+
+##### Architecture
+
+When you deploy your sample Go app, Google Cloud Data Drive, to App Engine, the data flow architecture looks like this:
+
+Go Serverless architecture diagram
+
+### Google Cloud Data Drive source code
+
+In this lab you deploy a simple app called Google Cloud Data Drive. 
+
+Google developed and open sourced this app to extract data from Google Cloud quickly. 
+
+The Google Cloud Data Drive app is one of a series of tools that demonstrates effective usage patterns for using Cloud API's and services.
+
+The Google Cloud Data Drive Go app exposes a simple composable URL path to retrieve data in JSON format from supported Google Cloud data platforms. 
+
+The application currently supports BigQuery and Firestore, but has a modular design that can support any number of data sources.
+
+These HTTP URL patterns are used to get data from Google Cloud running Google Cloud Data Drive.
+
+- Firestore : `[SERVICE_URL]/fs/[PROJECT_ID]/[COLLECTION]/[DOCUMENT]`
+
+- BigQuery: `[SERVICE_URL]/bq/[PROJECT_ID]/[DATASET]/[TABLE]`
+
+Where:
+
+- `[SERVICE URL]`: The base URL for the application from App Engine, Cloud Run, or Cloud Functions. For App Engine this will look like `https://[PROJECT ID].appspot.com/`.
+
+- `[PROJECT ID]`: The Project ID of the Firestore Collection or BigQuery Dataset you want to access. You find the **Project ID** in the left panel of your lab.
+
+- `[COLLECTION]`: The Firestore Collection ID (`symbols/product`)
+
+- `[DOCUMENT]`: The Firestore document you would like to return (`symbol`)
+
+- `[DATASET]`: The BigQuery Dataset name (`publicviews`)
+
+- `[TABLE]`: The BigQuery Table name (`ca_zip_codes`)
+
+> Note: Although this lab uses curl to test the app, you can create the URLs yourself for an added functionality test in a browser.
+
+### Task 1. Setup your environment
+
+In Cloud Shell, enter the following command to create an environment variable to store the **Project ID** to use later in this lab:
+
+```bash
+gcloud config set compute/region us-central1
+export REGION=$(gcloud config get compute/region)
+export PROJECT_ID=$(gcloud info --format="value(config.project)")
 ```
 
-Click **Run**.
+Get the sample code for this lab by copying from Google Cloud Storage (GCS):
 
-Now try executing this one:
-
-```sql
-#standardSQL
-SELECT
-['raspberry', 'blackberry', 'strawberry', 'cherry', 1234567] AS fruit_array
+```bash
+mkdir DIY-Tools
+gsutil cp -R gs://spls/gsp702/DIY-Tools/* DIY-Tools/
 ```
 
-You should get an error that looks like the following:
+#### Prepare your databases
 
-Error: `Array elements of types {INT64, STRING} do not have a common supertype at [3:1]`
+This lab uses sample data in BigQuery and Firestore to test your Go app.
 
-Why did you get this error?
+##### BigQuery database
 
-Arrays can only share one data type (all strings, all numbers).
+BigQuery is a serverless, future proof data warehouse with numerous features for machine learning, data partitioning, and segmentation. 
 
-Here's the final table to query against:
+This lets you analyze gigabytes to petabytes of data using ANSI SQL at blazing-fast speeds, and with zero operational overhead.
 
-```sql
-#standardSQL
-SELECT person, fruit_array, total_cost FROM `data-to-insights.advanced.fruit_store`;
+The BigQuery dataset is a view of California zip codes and was created for you when the lab started.
+
+##### Firestore database
+
+Firestore, is a serverless document database, with super fast document lookup and real-time eventing features. 
+
+It is also capable of a 99.999% SLA. 
+
+To use data in Firestore to test your app, you must initialize Firestore in native mode and then import the sample data.
+
+A Firestore native mode database instance has been created.
+
+In the Cloud Console, click **Navigation menu** > **Firestore** to open Firestore in the Console.
+
+Wait for the Firestore Database instance to initialize. 
+
+This process also initializes App Engine in the same region, which allows you to deploy the application to App Engine without first creating an App Engine instance.
+
+In Cloud Shell, launch a Firestore import job that provides sample Firestore data for the lab:
+
+```bash
+gcloud firestore import gs://$PROJECT_ID-firestore/prd-back
 ```
 
-Click **Run**.
+This import job loads a Cloud Firestore backup of a collection called `symbols` into the `$PROJECT_ID-firestore` storage bucket.
 
-After viewing the results, click the **JSON** tab to view the nested structure of the results.
+This import job takes up to 5 minutes to complete. Start the next section while you wait.
 
-#### Loading semi-structured JSON into BigQuery
+#### Configure permissions for Cloud Build
 
-What if you had a JSON file that you needed to ingest into BigQuery?
+Cloud Build is a service that executes your builds on Google Cloud infrastructure. 
 
-Create a new table `fruit_details` in the dataset.
+By default, Cloud Build does not have sufficient permissions to deploy applications to
 
-Click on `fruit_store` dataset.
+- App Engine
+- Cloud Run
+- Cloud Functions
 
-Now you will see the **Create Table** option.
+You must enable these services before you can use Cloud Build to deploy the Google Cloud Data Drive app.
 
-> Note: You may have to widen your browser window to see the Create table option.
+In the Console, click **Navigation menu** > **Cloud Build** > **Settings**.
 
-Add the following details for the table:
+Set the **Status** for **Cloud Functions** to **Enable**.
 
-- **Source**: Choose **Google Cloud Storage** in the **Create table from** dropdown.
+When prompted, click **Grant access to All Service Accounts**.
 
-- **Select file from Cloud Storage bucket**: `data-insights-course/labs/optimizing-for-performance/shopping_cart.json`
+Set the **Status** for **Cloud Run** to **Enable**.
 
-- **File format**: JSONL (Newline delimited JSON)
+Set the **Status** for **App Engine** to **Enable**.
 
-Call the new table `fruit_details`.
+### Task 2. Deploy to Cloud Run
 
-Check the checkbox of **Schema (Auto detect)**.
+Google Cloud Run is very similar to App Engine standard environment, except that Cloud Run allows you to bring your own container (BYOC). 
 
-Click **Create table**.
+For the Google Cloud Data Drive app, you supply a Dockerfile that creates a Docker container, and then deploy that container to Cloud Run.
 
-In the schema, note that `fruit_array` is marked as `REPEATED` which means it's an array.
+> Note: The same container can be hosted in Google Kubernetes Engine or any other platform that hosts Docker containers, even on-premises compute platforms.
 
-Recap
+#### Review the `Dockerfile`
 
-- BigQuery natively supports arrays
+Go is an excellent language to write apps for deployment on container platforms. 
 
-- Array values must share a data type
+The only item included in the container is the Go compiled binary. 
 
-- Arrays are called REPEATED fields in BigQuery
+In the below example you can see we use a base container called `distroless/static`. 
 
-### Task 3. Create your own arrays with ARRAY_AGG()
+This base container is built from scratch and contains only public certificate roots and timezone file information. 
 
-Don't have arrays in your tables already? You can create them!
+The Go binary is injected and registered as a start command (see the last line of the `Dockerfile` below). 
 
-Copy and paste the below query to explore this public dataset:
+There are no additional frameworks included or needed. 
 
-```sql
-SELECT
-fullVisitorId,
-date,
-v2ProductName,
-pageTitle
-FROM `data-to-insights.ecommerce.all_sessions`
-WHERE visitId = 1501570398
-ORDER BY date
+This type of container construction creates the smallest container and security footprint possible and makes the container extremely portable to GKE, Anthos, and on premise hosting solutions.
+
+Have a look at the `Dockerfile` code that builds the container below:
+
+```dockerfile
+# Use the official Golang image to create a build artifact.
+# This is based on Debian and sets the GOPATH to /go.
+# https://hub.docker.com/_/golang
+FROM golang:1.21 as builder
+
+# Create and change to the app directory.
+WORKDIR /app
+
+# Retrieve application dependencies.
+# This allows the container build to reuse cached dependencies.
+COPY go.* ./
+RUN go mod download
+
+# Copy local code to the container image.
+COPY .  ./
+
+WORKDIR /app/cmd/webserver
+# Build the binary.
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -mod=readonly -v -o gcp-data-drive
+
+# Use the Google Distroless image for a minimal container.
+FROM gcr.io/distroless/static
+
+# Copy the binary to the production image from the builder stage.
+COPY --from=builder /app/cmd/webserver/gcp-data-drive /gcp-data-drive
+
+# Run the web service on container startup.
+CMD ["/gcp-data-drive"]
 ```
 
-Click **Run** and view the results.
+View the Dockerfile on GitHub.
 
-Now, use the `ARRAY_AGG()` function to aggregate our string values into an array.
+#### Review the Cloud Build YAML config file
 
-**Copy and paste** the below query to explore this public dataset:
+The Cloud Build YAML file, `DIY-Tools/gcp-data-drive/cloudbuild_run.yaml`, shown below contains the Cloud Build step definitions that deploy your application to Cloud Run. You use this file to deploy the application to Cloud Run.
 
-```sql
-SELECT
-fullVisitorId,
-date,
-ARRAY_AGG(v2ProductName) AS products_viewed,
-ARRAY_AGG(pageTitle) AS pages_viewed
-FROM `data-to-insights.ecommerce.all_sessions`
-WHERE visitId = 1501570398
-GROUP BY fullVisitorId, date
-ORDER BY date
+- The first step executes the `git` command to clone the source repository that contains the application. This step is parameterized to allow you to easily switch between application branches.
+
+- The second step executes the `gcloud builds submit` command to use Cloud Build to create a container containing the compiled application using the steps contained in the `Dockerfile`. The container is then saved to `gcr.io`
+
+- The third step deploys the application container image from `gcr.io` to Cloud Run in the us-central1 region.
+
+You could build the container yourself and manually deploy this app using `gcloud run deploy`, but Cloud Build allows you to offload this to Google infrastructure. 
+
+The Google Cloud Build system is a core component of an automated CI/CD system because it allows you to listen to commit events with tag filters.
+
+These features come together to create an automated pipeline from developers committed to lifecycle deployment in a consistent and reliable way.
+
+> Note: The comments have been removed for clarity.
+
+```yaml
+steps:
+- name: 'gcr.io/cloud-builders/git'
+  args: ['clone','--single-branch','--branch',
+        '${_GIT_SOURCE_BRANCH}','${_GIT_SOURCE_URL}']
+
+- name: 'gcr.io/cloud-builders/gcloud'and I args: ['builds','submit', '--tag','gcr.io/$PROJECT_ID/gcp-data-drive'] dir: 'DIY-Tools/gcp-data-drive'
+
+- name: 'gcr.io/cloud-builders/gcloud' args: ['run','deploy','gcp-data-drive', '--image','gcr.io/$PROJECT_ID/gcp-data-drive', '--platform','managed', '--region','us-central1', '--allow-unauthenticated'] dir: 'DIY-Tools/gcp-data-drive' 
 ```
 
-Click **Run** and view the results
+View the steps in cloudbuild_run.yaml on GitHub.
 
-Next, use the `ARRAY_LENGTH()` function to count the number of pages and products that were viewed:
+#### Check the import process
 
-```sql
-SELECT
-fullVisitorId,
-date,
-ARRAY_AGG(v2ProductName) AS products_viewed,
-ARRAY_LENGTH(ARRAY_AGG(v2ProductName)) AS num_products_viewed,
-ARRAY_AGG(pageTitle) AS pages_viewed,
-ARRAY_LENGTH(ARRAY_AGG(pageTitle)) AS num_pages_viewed
-FROM `data-to-insights.ecommerce.all_sessions`
-WHERE visitId = 1501570398
-GROUP BY fullVisitorId, date
-ORDER BY date
+Look in Cloud Shell to see if the import process loading the data into Filestore has finished. 
+
+When it completes, continue to the next section to deploy the Google Cloud Data Drive app.
+
+#### Deploy the Google Cloud Data Drive app
+
+In Cloud Shell, change to the directory for the application that you cloned from GitHub:
+
+```bash
+cd ~/DIY-Tools/gcp-data-drive
 ```
 
-Next, deduplicate the pages and products so you can see how many unique products were viewed by adding `DISTINCT` to `ARRAY_AGG()`:
+Deploy the Google Cloud Data Drive app to Cloud Run with Cloud Build:
 
-```sql
-SELECT
-fullVisitorId,
-date,
-ARRAY_AGG(DISTINCT v2ProductName) AS products_viewed,
-ARRAY_LENGTH(ARRAY_AGG(DISTINCT v2ProductName)) AS distinct_products_viewed,
-ARRAY_AGG(DISTINCT pageTitle) AS pages_viewed,
-ARRAY_LENGTH(ARRAY_AGG(DISTINCT pageTitle)) AS distinct_pages_viewed
-FROM `data-to-insights.ecommerce.all_sessions`
-WHERE visitId = 1501570398
-GROUP BY fullVisitorId, date
-ORDER BY date
+```bash
+gcloud builds submit --config cloudbuild_run.yaml \
+  --project $PROJECT_ID --no-source \
+  --substitutions=_GIT_SOURCE_BRANCH="master",_GIT_SOURCE_URL="https://github.com/GoogleCloudPlatform/DIY-Tools",_GCP_REGION="us-central1"
 ```
 
-Recap
+Enter the following command to allow unauthorized access to the Google Cloud Run services:
 
-You can do some pretty useful things with arrays like:
-
-- finding the number of elements with `ARRAY_LENGTH(<array>)`
-
-- deduplicating elements with `ARRAY_AGG(DISTINCT <field>)`
-
-- ordering elements with `ARRAY_AGG(<field> ORDER BY <field>)`
-
-- limiting `ARRAY_AGG(<field> LIMIT 5)`
-
-### Task 4. Query tables containing arrays
-
-The BigQuery Public Dataset for Google Analytics `bigquery-public-data.google_analytics_sample` has many more fields and rows than our course dataset `data-to-insights.ecommerce.all_sessions`. 
-
-More importantly, it already stores field values like products, pages, and transactions natively as ARRAYs.
-
-**Copy and paste** the below query to explore the available data and see if you can find fields with repeated values (arrays):
-
-```sql
-SELECT
-*
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`
-WHERE visitId = 1501570398
+```bash
+gcloud beta run services add-iam-policy-binding --region=us-central1 --member=allUsers --role=roles/run.invoker gcp-data-drive
 ```
 
-**Run** the query.
+The deployment takes a few minutes and you may see some red text in the console. These are not failure logs.
 
-**Scroll right** in the results until you see the `hits.product.v2ProductName` field (multiple field aliases are discussed shortly).
+Store the Cloud Run service URL in an environment variable:
 
-The amount of fields available in the Google Analytics schema can be overwhelming for analysis.
-
-Try to query just the visit and page name fields like before:
-
-```sql
-SELECT
-visitId,
-hits.page.pageTitle
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`
-WHERE visitId = 1501570398
+```bash
+export CLOUD_RUN_SERVICE_URL=$(gcloud run services --platform managed describe gcp-data-drive --region us-central1 --format="value(status.url)")
 ```
 
-You will get an error: `Error:Cannot access field page on a value with type ARRAY<STRUCT<hitNumber INT64, time INT64, hour INT64, ...>> at [3:8]`
+Use `curl` to call the application to query data from the Firestore `symbols` collection in your project:
 
-Before you can query `REPEATED` fields (arrays) normally, you must first break the arrays back into rows.
-
-For example, the array for `hits.page.pageTitle` is stored currently as a single row like:
-
-```sql
-['homepage','product page','checkout']
+```bash
+curl $CLOUD_RUN_SERVICE_URL/fs/$PROJECT_ID/symbols/product/symbol | jq .
 ```
 
-and it needs to be:
+> Note: If you get an authentication error, wait a minute and retry the previous curl command.
 
-```sql
-['homepage',
-'product page',
-'checkout']
-```
-
-How do you do that with SQL?
-
-Answer: Use the `UNNEST()` function on your array field:
-
-```sql
-SELECT DISTINCT
-  visitId,
-  h.page.pageTitle
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`,
-UNNEST(hits) AS h
-WHERE visitId = 1501570398
-LIMIT 10
-```
-
-We'll cover UNNEST() more in detail later but for now just know that:
-
-- You need to UNNEST() arrays to bring the array elements back into rows
-
-- UNNEST() always follows the table name in your FROM clause (think of it conceptually like a pre-joined table)
-
-### Task 5. Introduction to STRUCTs
-
-You may have wondered why the field alias `hit.page.pageTitle` looks like three fields in one separated by periods. 
-
-Just as ARRAY values give you the flexibility to go deep into the granularity of your fields, another data type allows you to go wide in your schema by grouping related fields together. 
-
-That SQL data type is the STRUCT data type.
-
-The easiest way to think about a STRUCT is to consider it conceptually like a separate table that is already pre-joined into your main table.
-
-A STRUCT can have:
-
-- One or many fields in it
-
-- The same or different data types for each field
-
-- It's own alias
-
-Sounds just like a table right?
-
-#### Explore a dataset with STRUCTs
-
-To open the **bigquery-public-data** dataset, click **+ADD** and then select **Star a project by name** and enter the name `bigquery-public-data`
-
-Click **Star**.
-
-The `bigquery-public-data` project is listed in the Explorer section.
-
-Open **bigquery-public-data**.
-
-Find and open **google_analytics_sample** dataset.
-
-Click the **ga_sessions(366)_** table.
-
-As you can imagine, there is an incredible amount of website session data stored for a modern ecommerce website.
-
-The main advantage of having 32 STRUCTs in a single table is it allows you to run queries like this one without having to do any JOINs:
-
-```sql
-SELECT
-  visitId,
-  totals.*,
-  device.*
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`
-WHERE visitId = 1501570398
-LIMIT 10
-```
-
-> Note: The `.*` syntax tells BigQuery to return all fields for that STRUCT (much like it would if `totals.*` was a separate table we joined against).
-
-Storing your large reporting tables as STRUCTs (pre-joined "tables") and ARRAYs (deep granularity) allows you to:
-
-- Gain significant performance advantages by avoiding 32 table JOINs
-
-- Get granular data from ARRAYs when you need it but not be punished if you don't (BigQuery stores each column individually on disk)
-
-- Have all the business context in one table as opposed to worrying about JOIN keys and which tables have the data you need
-
-### Task 6. Practice with STRUCTs and arrays
-
-The next dataset will be lap times of runners around the track. Each lap will be called a "split".
-
-With this query, try out the STRUCT syntax and note the different field types within the struct container:
-
-```sql
-#standardSQL
-SELECT STRUCT("Rudisha" as name, 23.4 as split) as runner
-```
-
-Row|runner.name|runner.split
-1|Rudisha|23.4
-
-What do you notice about the field aliases? Since there are fields nested within the struct (name and split are a subset of runner) you end up with a dot notation.
-
-What if the runner has multiple split times for a single race (like time per lap)?
-
-With an array of course!
-
-Run the below query to confirm:
-
-```sql
-#standardSQL
-SELECT STRUCT("Rudisha" as name, [23.4, 26.3, 26.4, 26.1] as splits) AS runner
-```
-
-To recap:
-
-- Structs are containers that can have multiple field names and data types nested inside.
-
-- Arrays can be one of the field types inside of a Struct (as shown above with the splits field).
-
-#### Practice ingesting JSON data
-
-Create a new dataset titled `racing`.
-
-Click on `racing` dataset and click **Create table**.
-
-> Note: You may have to widen your browser window to see the Create table option.
-
-- **Source**: select **Google Cloud Storage** under **Create table from** dropdown.
-
-- **Select file from Cloud Storage bucket**: `data-insights-course/labs/optimizing-for-performance/race_results.json`
-
-- **File format**: JSONL (Newline delimited JSON)
-
-- In **Schema**, click on **Edit as text** slider and add the following:
+This responds with the contents of a JSON file containing the values from the symbols collection in your project, which looks similar to this:
 
 ```json
 [
-    {
-        "name": "race",
-        "type": "STRING",
-        "mode": "NULLABLE"
-    },
-    {
-        "name": "participants",
-        "type": "RECORD",
-        "mode": "REPEATED",
-        "fields": [
-            {
-                "name": "name",
-                "type": "STRING",
-                "mode": "NULLABLE"
-            },
-            {
-                "name": "splits",
-                "type": "FLOAT",
-                "mode": "REPEATED"
-            }
-        ]
-    }
+  {
+    "asin": "B07DR9XYKB",
+    "bbw": false,
+    "brand": "",
+    "category": "toy_display_on_website",
+    "cpip": 1640,
+    "docid": "887961768916",
+    "fba": false,
+    "fbafees": 610,
+    "inStock": "NOW",
+    "lastMatchLookup": "2020-03-13T13:00:47.040414Z",
+    "lastOfferLookup": "2020-03-13T13:00:47.933649Z",
+    "listPrice": 1599,
+    "manufacturer": "Fisher-Price",
+    "pkgquantity": 0,
+    "salesrank": 54773,
+    "sfbc": 4683,
+    "sfbr": 0.99,
+    "smallImage": "http://ecx.images-amazon.com/images/I/41fDombwLCL._SL75_.jpg",
+    "title": "Fisher-Price Imaginext Toy Story Buzz Lightyear & Pizza Planet Truck",
+    "upc": "887961768916"
+  },
+  {
+    "asin": "0744018307",
+    "bbw": true,
+    "brand": "",
+    "category": "book_display_on_website",
+    "cpip": 2000,
+    "docid": "9780744018301",
+    "fba": false,
+    "fbafees": 722,
+    "inStock": "NOW",
+    "lastMatchLookup": "2020-03-13T14:00:10.209183Z",
+    "lastOfferLookup": "2020-03-13T14:00:13.670858Z",
+    "listPrice": 3999,
+    "manufacturer": "Prima Games",
+    "pkgquantity": 0,
+    "salesrank": 337073,
+    "sfbc": 0,
+    "sfbr": 0,
+    "smallImage": "http://ecx.images-amazon.com/images/I/51NFIAHRfTL._SL75_.jpg",
+    "title": "Wolfenstein II: The New Colossus: Prima Collector's Edition Guide",
+    "upc": "9780744018301"
+  }
 ]
 ```
 
-Call the new table `race_results`.
+Use `curl` to call the application to query data from the BigQuery `publicviews.ca_zip_codes` table in your lab project:
 
-Click **Create table**.
-
-After the load job is successful, preview the schema for the newly created table:
-
-Which field is the STRUCT? How do you know?
-
-The **participants** field is the STRUCT because it is of type RECORD.
-
-Which field is the ARRAY?
-
-The `participants.splits` field is an array of floats inside of the parent `participants` struct. 
-
-It has a REPEATED Mode which indicates an array. 
-
-Values of that array are called nested values since they are multiple values inside of a single field.
-
-#### Practice querying nested and repeated fields
-
-Let's see all of our racers for the 800 Meter race:
-
-```sql
-#standardSQL
-SELECT * FROM racing.race_results
+```bash
+curl $CLOUD_RUN_SERVICE_URL/bq/$PROJECT_ID/publicviews/ca_zip_codes | jq .
 ```
 
-How many rows were returned?
-
-Answer: 1
-
-What if you wanted to list the name of each runner and the type of race?
-
-Run the below schema and see what happens:
+This responds with the contents of a JSON file containing the results of the BigQuery SQL statement `SELECT * FROM publicviews.ca_zip_codes;`, which looks similar to this:
 
 ```sql
-#standardSQL
-SELECT race, participants.name
-FROM racing.race_results
+[
+  {
+    "Zipcode": "94123",
+    "area_land_miles": 1.024,
+    "state_code": "CA"
+  },
+  {
+    "Zipcode": "96090",
+    "area_land_miles": 1.027,
+    "state_code": "CA"
+  },
+  {
+    "Zipcode": "94929",
+    "area_land_miles": 1.062,
+    "state_code": "CA"
+  }
+]
 ```
 
-Error: `Cannot access field name on a value with type ARRAY<STRUCT<name STRING, splits ARRAY<FLOAT64>>>> at [2:27]`
+Go is a great language for use on Cloud Run mainly because of its portability and compile size. 
 
-Much like forgetting to GROUP BY when you use aggregation functions, here there are two different levels of granularity. 
+Even though Go is a statically typed compiled language, you can effectively access different data platforms in a modular way. 
 
-One row for the race and three rows for the participants names. So how do you change this...
+Look at the details of the application container for this Go App.
 
-Row|race|participants.name
-1|800M|Rudisha
-2|???|Makhloufi
-3|???|Murphy
+#### Take a closer look at the container
 
-...to this:
+In the Cloud Console, click **Navigation menu** > **Cloud Run**.
 
-Row|race|participants.name
-1|800M|Rudisha
-2|800M|Makhloufi
-3|800M|Murphy
+Click **gcp-data-drive** in the services list.
 
-In traditional relational SQL, if you had a races table and a participants table what would you do to get information from both tables? 
+Click the **Revisions** tab.
 
-You would JOIN them together. 
+In the right panel, in the **Container** tab, click the **Image URL**.
 
-Here the participant STRUCT (which is conceptually very similar to a table) is already part of your races table but is not yet correlated correctly with your non-STRUCT field "race".
+The **Container** pane includes the URL for the Container image to examine the image in the Container Registry. 
 
-Can you think of what two word SQL command you would use to correlate the 800M race with each of the racers in the first table?
+The Container Registry opens in a new browser tab at the **Image details** window.
 
-Answer: CROSS JOIN
+As you can see from the virtual size, the container is small as it only contains the Go binary, which gives it the smallest security attack service possible. 
 
-Great!
+Go containers also make great Anthos services because they are small and easily portable across CPU and OS types. 
 
-Now try running this:
+This makes them easily transferable from Cloud to on premise platforms, and vice versa.
+
+### Task 3. Deploy to Cloud Functions
+
+Cloud Functions is Google Cloud's event-driven serverless compute platform. 
+
+When you combine Go and Cloud Functions, you get the best serverless has to offer in terms of fast spin up times and infinite scale so your application can have the best event driven response times possible.
+
+Have a look at the source code and see how to reuse the Google Cloud Data Drive source code in a Cloud Function.
+
+#### Review the `main` function
+
+At the start of the `main` function in `DIY-Tools/gcp-data-drive/cmd/webserver/main.go`, you tell the web server to send all HTTP requests to the `gcpdatadrive.GetJSONData` Go function.
+
+```go
+func main() {
+
+    // Register the initial HTTP handler.
+    http.HandleFunc("/", gcpdatadrive.GetJSONData)
+
+    port := os.Getenv("PORT")
+...
+```
+
+View the main function in main.go on GitHub.
+
+In a Cloud Function, the `main.go` is not used, instead the Cloud Function runtime is configured to send HTTP requests directly to the `gcpdatadrive.GetJSONData` Go function that is defined in the `DIY-Tools/gcp-data-drive/gcpdatadrive.go` file.
+
+You can see how this is done by looking at how the Google Cloud Data Drive application is deployed to Cloud Functions using Cloud Build with `cloudbuild_gcf.yaml`:
+
+> Note: The comments have been removed for clarity.
+
+View the cloudbuild_gcf.yaml on GitHub.
+
+These Cloud Build steps are also similar to those used to deploy the application to Cloud Run, but in this case, you deploy the application to Cloud Functions using the `gcloud functions deploy` command.
+
+Notice that the Cloud Functions `--entrypoint` parameter is used to specify the `GetJSONData` function and not the `main` function in the main Go package that is used when it is deployed to App Engine or Cloud Run.
+
+#### Deploy the Google Cloud Data Drive app
+
+Assign the Cloud Functions service account the `roles/artifactregistry.reader` role to allow the Cloud Functions service account to read from Artifact Registry:
+
+```bash
+PROJECT_NUMBER=$(gcloud projects list --filter="PROJECT_ID=$PROJECT_ID" --format="value(PROJECT_NUMBER)")
+
+SERVICE_ACCOUNT_EMAIL="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \ 
+    --member "serviceAccount:${SERVICE_ACCOUNT_EMAIL}" \ 
+    --role "roles/artifactregistry.reader"
+```
+
+Still in `DIY-Tools/gcp-data-drive`, deploy to Cloud Functions with Cloud Build:
+
+```bash
+gcloud builds submit \ 
+  --config cloudbuild_gcf.yaml \ 
+  --project $PROJECT_ID \ 
+  --no-source \ 
+  --substitutions=_GIT_SOURCE_BRANCH="master",_GIT_SOURCE_URL="https://github.com/GoogleCloudPlatform/DIY-Tools",_GCP_REGION="us-central1"
+```
+
+> Note: If you get a 403 permission error, wait a minute and retry the build command. It typically takes a couple of minutes for the service account permissions to propagate.
+
+Enter the following command to allow unauthorized access to the Google Cloud Data Drive Cloud Function:
+
+```bash
+gcloud alpha functions add-iam-policy-binding gcp-data-drive \ 
+  --member=allUsers \ 
+  --role=roles/cloudfunctions.invoker
+```
+
+Store the Cloud Functions HTTP Trigger URL in an environment variable:
+
+```bash
+export CF_TRIGGER_URL=$(gcloud functions describe gcp-data-drive --format="value(httpsTrigger.url)")
+```
+
+Use `curl` to call the application to query data from the Firestore `symbols` collection in your project:
+
+```bash
+curl $CF_TRIGGER_URL/fs/$PROJECT_ID/symbols/product/symbol | jq .
+```
+
+This responds with the contents of a JSON file containing the values from the `symbols` collection in your project .
+
+```json
+[
+  {
+    "asin": "",
+    "brand": "",
+    "category": "",
+    "docid": "914600502073",
+    "fbafees": 0,
+    "lastMatchLookup": "0001-01-01T00:00:00Z",
+    "listPrice": 0,
+    "manufacturer": "",
+    "pkgquantity": 0,
+    "salesrank": 0,
+    "smallImage": "",
+    "title": "",
+    "upc": "914600502073"
+  },
+  {
+    "asin": "0744018307",
+    "bbw": true,
+    "brand": "",
+    "category": "book_display_on_website",
+    "cpip": 2000,
+    "docid": "9780744018301",
+    "fba": false,
+    "fbafees": 722,
+    "inStock": "NOW",
+    "lastMatchLookup": "2020-03-13T14:00:10.209183Z",
+    "lastOfferLookup": "2020-03-13T14:00:13.670858Z",
+    "listPrice": 3999,
+    "manufacturer": "Prima Games",
+    "pkgquantity": 0,
+    "salesrank": 337073,
+    "sfbc": 0,
+    "sfbr": 0,
+    "smallImage": "http://ecx.images-amazon.com/images/I/51NFIAHRfTL._SL75_.jpg",
+    "title": "Wolfenstein II: The New Colossus: Prima Collector's Edition Guide",
+    "upc": "9780744018301"
+  }
+]
+```
+
+Use `curl` to call the application to query data from the BigQuery `publicviews.ca_zip_codes` table in your lab project:
+
+```bash
+curl $CF_TRIGGER_URL/bq/$PROJECT_ID/publicviews/ca_zip_codes
+```
+
+This responds with the contents of a JSON file containing the results of the BigQuery SQL statement `SELECT * FROM publicviews.ca_zip_codes;`.
 
 ```sql
-#standardSQL
-SELECT race, participants.name
-FROM racing.race_results
-CROSS JOIN
-participants  # this is the STRUCT (it is like a table within a table)
+[
+  {
+    "Zipcode": "96090",
+    "area_land_miles": 1.027,
+    "state_code": "CA"
+  },
+  {
+    "Zipcode": "94929",
+    "area_land_miles": 1.062,
+    "state_code": "CA"
+  }
+]
 ```
 
-`Table name "participants" missing dataset while no default dataset is set in the request.`
+### Task 4. Additional Cloud Functions triggers
 
-Even though the participants STRUCT is like a table, it is still technically a field in the `racing.race_results` table.
+Cloud Functions has an event driven architecture. 
 
-Add the dataset name to the query:
+The app you deployed uses an HTTP request as an event. 
+
+Explore the code of another Go app that takes in a different event type. 
+
+The function is triggered on a Firestore write event.
+
+The Go source code below is adapted from the Go Code sample guide:
+
+```go
+package mygopackage
+
+ import (
+        "context"
+        "fmt"
+        "log"
+        "time"
+
+        "cloud.google.com/go/functions/metadata"
+)
+
+// FirestoreEvent is the payload of a Firestore event.
+type FirestoreEvent struct {
+        OldValue   FirestoreValue `json:"oldValue"`
+        Value      FirestoreValue `json:"value"`
+        UpdateMask struct {
+                FieldPaths []string `json:"fieldPaths"`
+        } `json:"updateMask"`
+}
+
+// FirestoreValue holds Firestore fields.
+type FirestoreValue struct {
+        CreateTime time.Time `json:"createTime"`
+        Fields     interface{} `json:"fields"`
+        Name       string      `json:"name"`
+        UpdateTime time.Time   `json:"updateTime"`
+}
+
+// DoSomeThingOnWrite is triggered by
+// a change to a Firestore document.
+func DoSomeThingOnWrite(ctx context.Context, e FirestoreEvent) error {
+        meta, err := metadata.FromContext(ctx)
+        if err != nil {
+                return fmt.Errorf("metadata.FromContext: %v", err)
+        }
+        // The variables e and meta contain
+        // the information from the event
+        // so now we can Go do some logic
+        // work with the data. In this case
+        // we are simply writing it to the log.
+
+        log.Printf("Function triggered by change to: %v", meta.Resource)
+        log.Printf("Old value: %+v", e.OldValue)
+        log.Printf("New value: %+v", e.Value)
+        return nil
+}
+```
+
+View the example source code on GitHub.
+
+This example contains code that can be used to deploy Cloud Functions that handle Firestore events, instead of the HTTP request trigger used in the lab sample application. 
+
+You register this function with a Cloud Firestore event trigger using `DoSomeThingOnWrite` as the Cloud Functions entrypoint.
+
+Cloud Functions currently support the following event triggers.
+
+The example above is a simple case, but you can imagine the potential. 
+
+Simple Go Cloud Functions do tasks that used to come with the burden of managing an operating system. 
+
+For example, you can use a function like this to run Data Loss Prevention (DLP) to sanitize data when a customer writes something to Cloud Firestore via a mobile app.
+
+The Cloud Function could rewrite a summary report to Firestore for web consumption based on a pub/sub event. 
+
+Any number of small processes that are event based are good candidates for Go Cloud Functions. 
+
+Best of all, there are zero servers to patch.
+
+### Task 5. Deploy to App Engine
+
+App Engine is well suited for running Go applications. 
+
+App Engine is a serverless compute platform that is fully managed to scale up and down as workloads fluctuate. 
+
+Go applications are compiled to a single binary executable file during deployment. 
+
+Go cold startup times for applications are often between 80 and 1400 in milliseconds and when running, App Engine can horizontally scale to meet the most demanding global scale workloads in seconds.
+
+#### Review the Cloud Build YAML config file
+
+The Cloud Build YAML file, `DIY-Tools/gcp-data-drive/cloudbuild_appengine.yaml`, shown below contains the Cloud Build step definitions that deploy your application to App Engine. 
+
+You use this file to deploy the application to App Engine.
+
+The first step executes the `git` command to clone the source repository that contains the application. 
+
+This step is parameterized to allow you to easily switch between application branches.
+
+The second step executes the `sed` command to replace the `runtime: go113` line in the `app.yaml` file with `runtime: go121`. 
+
+This is necessary because the Go 1.13 runtime is deprecated and will be removed in the future. Note that this is just a patch to keep the app running. 
+
+You should update the app to use the latest Go runtime in your own projects.
+
+The third step executes the `gcloud app deploy` command to deploy the application to App Engine.
+
+As with the other examples, you could manually deploy this app using `gcloud app deploy`, but Cloud Build allows you to offload this to Google infrastructure, for example if you want to create a serverless CI/CD pipeline.
+
+> Note: The comments from the file have been removed for clarity.
+
+```yaml
+steps:
+- name: 'gcr.io/cloud-builders/git'
+  args: ['clone','--single-branch','--branch',
+        '${_GIT_SOURCE_BRANCH}','${_GIT_SOURCE_URL}']
+
+- name: 'ubuntu'  # Or any base image containing 'sed'
+  args: ['sed', '-i', 's/runtime: go113/runtime: go121/', 'app.yaml'] # Replace go113 with go121
+  dir: 'DIY-Tools/gcp-data-drive/cmd/webserver'
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: ['app','deploy','app.yaml','--project','$PROJECT_ID']
+  dir: 'DIY-Tools/gcp-data-drive/cmd/webserver'
+```
+
+View cloudbuild_appengine.yaml on GitHub.
+
+#### Deploy the Google Cloud Data Drive app
+
+Still in `DIY-Tools/gcp-data-drive`, deploy the Go webserver app to App Engine using Cloud Build:
+
+```bash
+gcloud builds submit  \ 
+  --config cloudbuild_appengine.yaml \ 
+  --project $PROJECT_ID --no-source \ 
+  --substitutions=_GIT_SOURCE_BRANCH="master",_GIT_SOURCE_URL="https://github.com/GoogleCloudPlatform/DIY-Tools"
+```
+
+Deployment takes a few minutes to complete.
+
+Store the App Engine URL in an environment variable to use in the command to call the app:
+
+> Note: The App Engine URL is the target url in the output.
+
+```bash
+export TARGET_URL=https://$(gcloud app describe --format="value(defaultHostname)")
+```
+
+Use `curl` to call the application running on App Engine to query data from Firestore:
+
+```bash
+curl $TARGET_URL/fs/$PROJECT_ID/symbols/product/symbol | jq .
+```
+
+This responds with the contents of a JSON file containing three values from the `symbols` collection in your project.
+
+```json
+[
+  {
+    "asin": "",
+    "brand": "",
+    "category": "",
+    "docid": "914600502073",
+    "fbafees": 0,
+    "lastMatchLookup": "0001-01-01T00:00:00Z",
+    "listPrice": 0,
+    "manufacturer": "",
+    "pkgquantity": 0,
+    "salesrank": 0,
+    "smallImage": "",
+    "title": "",
+    "upc": "914600502073"
+  },
+  {
+    "asin": "0744018307",
+    "bbw": true,
+    "brand": "",
+    "category": "book_display_on_website",
+    "cpip": 2000,
+    "docid": "9780744018301",
+    "fba": false,
+    "fbafees": 722,
+    "inStock": "NOW",
+    "lastMatchLookup": "2020-03-13T14:00:10.209183Z",
+    "lastOfferLookup": "2020-03-13T14:00:13.670858Z",
+    "listPrice": 3999,
+    "manufacturer": "Prima Games",
+    "pkgquantity": 0,
+    "salesrank": 337073,
+    "sfbc": 0,
+    "sfbr": 0,
+    "smallImage": "http://ecx.images-amazon.com/images/I/51NFIAHRfTL._SL75_.jpg",
+    "title": "Wolfenstein II: The New Colossus: Prima Collector's Edition Guide",
+    "upc": "9780744018301"
+  }
+]
+```
+
+Use `curl` to call the app running on App Engine to query data from BigQuery:
+
+```bash
+curl $TARGET_URL/bq/$PROJECT_ID/publicviews/ca_zip_codes | jq .
+```
+
+This responds with the contents of a JSON file containing the results of the BigQuery SQL statement `SELECT * FROM publicviews.ca_zip_codes;`.
 
 ```sql
-#standardSQL
-SELECT race, participants.name
-FROM racing.race_results
-CROSS JOIN
-race_results.participants # full STRUCT name
+[
+  {
+    "Zipcode": "96090",
+    "area_land_miles": 1.027,
+    "state_code": "CA"
+  },
+  {
+    "Zipcode": "94929",
+    "area_land_miles": 1.062,
+    "state_code": "CA"
+  }
+]
 ```
 
-And click **Run**.
+#### Increase the load
 
-Wow! You've successfully listed all of the racers for each race!
+Increase the load to see what happens.
 
-You can simplify the last query by:
+Use the nano editor to create a simple shell script to put some load on the application:
 
-- Adding an alias for the original table
-
-- Replacing the words "CROSS JOIN" with a comma (a comma implicitly cross joins)
-
-This will give you the same query result:
-
-```sql
-#standardSQL
-SELECT race, participants.name
-FROM racing.race_results AS r, r.participants
+```bash
+nano loadgen.sh
 ```
 
-If you have more than one race type (800M, 100M, 200M), wouldn't a CROSS JOIN just associate every racer name with every possible race like a cartesian product?
+Type or paste the following script into the editor:
 
-Answer: No. This is a correlated cross join which only unpacks the elements associated with a single row. For a greater discussion, see working with ARRAYs and STRUCTs
-
-Recap of STRUCTs:
-
-- A SQL STRUCT is simply a container of other data fields which can be of different data types. The word struct means data structure. Recall the example from earlier: `STRUCT(``"Rudisha" as name, [23.4, 26.3, 26.4, 26.1] as splits``)`` AS runner`
-
-- STRUCTs are given an alias (like runner above) and can conceptually be thought of as a table inside of your main table.
-
-- STRUCTs (and ARRAYs) must be unpacked before you can operate over their elements. Wrap an UNNEST() around the name of the struct itself or the struct field that is an array in order to unpack and flatten it.
-
-### Task 7. Lab question: STRUCT()
-
-Answer the below questions using the `racing.race_results` table you created previously.
-
-Task: Write a query to COUNT how many racers were there in total.
-
-> Note: Remember you will need to cross join in your struct name as an additional data source after the FROM.
-
-```sql
-#standardSQL
-SELECT COUNT(p.name) AS racer_count
-FROM racing.race_results AS r, UNNEST(r.participants) AS p
+```bash
+#!/bin/bash
+for ((i=1; i<=1000; i++)); do
+   curl "$TARGET_URL/bq/$PROJECT_ID/publicviews/ca_zip_codes" > /dev/null &
+done
 ```
 
-Answer: There were 8 racers who ran the race.
+Press Ctrl+X, Y, and then Enter to save the new file.
 
-### Task 8. Lab question: Unpacking arrays with UNNEST( )
+Make the script executable:
 
-Write a query that will list the total race time for racers whose names begin with R. 
-
-Order the results with the fastest total time first. 
-
-Use the UNNEST() operator and start with the partially written query below.
-
-> Note: You will need to unpack both the struct and the array within the struct as data sources after your FROM clause. Be sure to use aliases where appropriate.
-
-```sql
-#standardSQL
-SELECT
-  p.name,
-  SUM(split_times) as total_race_time
-FROM racing.race_results AS r
-, UNNEST(r.participants) AS p
-, UNNEST(p.splits) AS split_times
-WHERE p.name LIKE 'R%'
-GROUP BY p.name
-ORDER BY total_race_time ASC;
+```bash
+chmod +x loadgen.sh
 ```
 
-### Task 9. Filter within array values
+Run the load test:
 
-You happened to see that the fastest lap time recorded for the 800 M race was 23.2 seconds, but you did not see which runner ran that particular lap.
-
-Create a query that returns that result.
-
-```sql
-#standardSQL
-SELECT
-  p.name,
-  split_time
-FROM racing.race_results AS r
-, UNNEST(r.participants) AS p
-, UNNEST(p.splits) AS split_time
-WHERE split_time = 23.2;
+```bash
+./loadgen.sh
 ```
 
-### Congratulations!
+In the Console, click Navigation menu > App Engine > Instances.
 
-You've successfully ingested JSON datasets, created ARRAYs and STRUCTs, and unnested semi-structured data for insights.
+The Instances window opens and shows a summary of requests/second and a list of instances spawned when you ran the load test in Cloud Shell. 
+
+Notice how App Engine automatically created additional app instances and distributed the incoming HTTP traffic.
+
+> Note: It may take 3 to 5 minutes for the Summary graph to show data. Don't forget to refresh the Instances window!
+
+In Cloud Shell, press Ctrl+C to end the load test if it is still running.
+
+### Congratulations
+
+In this self-paced lab, you explored how to use the Go programming language to deploy to the all Google Cloud serverless compute platforms. 
+
+The following are key takeaways:
+
+- The Go programming language has awesome profitability and efficiency features that make it an excellent fit for modern cloud and on prem applications.
+
+- The same Go code base can be deployed to all Google Cloud serverless, container based, and Anthos compute platforms without modification.
+
+- Cloud Build (also serverless) is a key part of a cloud based CI/CD pipeline to provide consistency in delivering to your application lifecycles.
+
+- Cloud Run, Cloud Functions, and App Engine are simple serverless platforms that operate at Google scale and are easy to deploy to.
+
+- Google Cloud Data Drive is an open source data extraction library that I can use in my existing Google Cloud environment.

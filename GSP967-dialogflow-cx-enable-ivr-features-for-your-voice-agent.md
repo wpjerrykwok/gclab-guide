@@ -1,273 +1,537 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+Dialogflow CX: Enable IVR Features for your Voice Agent
+experiment
+Lab
+schedule
+1 hour 30 minutes
+universal_currency_alt
+No cost
+show_chart
+Introductory
+info
+This lab may incorporate AI tools to support your learning.
+GSP967
+Google Cloud self-paced labs logo
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
+Overview
+Dialogflow CX provides a simple, visual bot building approach to virtual agent design. For a full voice experience, your Dialogflow CX Agent can be integrated with various conversational platforms, including telephony providers. In this lab, you'll explore these Interactive Voice Response (IVR) features as well as two additional features - conversation repair and Speech Synthesis Markup Language (SSML) - that help end users feel as though they're having a natural, interactive, and cooperative conversation.
 
-## GSP087
+This lab will show you how to enable various IVR features, but you will only be able to test some of them with the Dialogflow CX Phone Gateway. Features like DTMF (Dual-Tone Multi-Frequency) and Barge-in (where the user can interrupt the bot) are not supported in Dialogflow Telephony and can only be tested with your telephony provider.
 
-### Overview
+In this lab you will continue building a conversational agent, exploring and adding the IVR features that Dialogflow CX provides.
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Voice and telephony features such as DTMF, Barge-in, and End of speech sensitivity (so the bot can accommodate for pauses in a phrase, such as a number or ID) can all be configured in Dialogflow CX.
 
-#### Application architecture
+Conversation repair is the practice of fixing misunderstandings, mishearings, and misarticulations to resume a conversation. Repairing a conversation can help build a user's trust by showing that the voice agent is listening to their request. Situations where conversations might fail are handled in a more graceful manner, such as when a voice agent cannot find an intent using the NoMatch event, or when the agent detects no verbal response using the NoInput event feature. You'll configure these events to rephrase a prompt up to a maximum of 3 times and then escalate to a live agent to avoid trapping users in a loop of handling errors.
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+SSML - Speech Synthesis Markup Language helps make the Text-to-Speech voice interaction sound more natural.
 
-The script reports a numeric value to a Cloud monitoring metric.
+To do this work efficiently you'll restore a provided agent. This agent will have 2 new pages and an additional intent that will jumpstart your exploration of the new conversational features.
 
-You do not need to know Node.js or JavaScript for this lab.
+In this lab you will do the following
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+Enable and configure IVR features
+Add in NoMatch and NoInput handling scenarios to escalate to an Agent
+Add in rich voice responses with SSML
+Prerequisites
+Students should be generally familiar with the basic concepts of conversational AI. Before you start the lab, read through these Sample Transcripts to get an idea of what client transcripts might look like. Often the first step in creating an agent is to read through client transcripts and/or other contextual data to understand the use case and specific business requirements.
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+This Lab builds upon the basic Flight Booker agent developed in Dialogflow CX: Bot Building Basics. Instructions to restore the previously built Flight Booker agent are described in the next section.
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+Setup and requirements
+Before you click the Start Lab button
+Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click Start Lab, shows how long Google Cloud resources will be made available to you.
 
-The application includes the following components:
+This hands-on lab lets you do the lab activities yourself in a real cloud environment, not in a simulation or demo environment. It does so by giving you new, temporary credentials that you use to sign in and access Google Cloud for the duration of the lab.
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+To complete this lab, you need:
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+Access to a standard internet browser (Chrome browser recommended).
+Note: Use an Incognito or private browser window to run this lab. This prevents any conflicts between your personal account and the Student account, which may cause extra charges incurred to your personal account.
+Time to complete the lab---remember, once you start, you cannot pause a lab.
+Note: If you already have your own personal Google Cloud account or project, do not use it for this lab to avoid extra charges to your account.
+How to start your lab and sign in to the Google Cloud console
+Click the Start Lab button. If you need to pay for the lab, a pop-up opens for you to select your payment method. On the left is the Lab Details panel with the following:
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+The Open Google Cloud console button
+Time remaining
+The temporary credentials that you must use for this lab
+Other information, if needed, to step through this lab
+Click Open Google Cloud console (or right-click and select Open Link in Incognito Window if you are running the Chrome browser).
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
+The lab spins up resources, and then opens another tab that shows the Sign in page.
 
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
+Tip: Arrange the tabs in separate windows, side-by-side.
 
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
+Note: If you see the Choose an account dialog, click Use Another Account.
+If necessary, copy the Username below and paste it into the Sign in dialog.
 
-#### Objectives
+student-01-bd37c67a34bb@qwiklabs.net
+Copied!
+You can also find the Username in the Lab Details panel.
 
-In this lab, you will learn how to perform the following tasks:
+Click Next.
 
-- Deploy an autoscaling Compute Engine instance group.
+Copy the Password below and paste it into the Welcome dialog.
 
-- Create a custom metric used to scale the instance group.
+Zte9CdOVRyCJ
+Copied!
+You can also find the Password in the Lab Details panel.
 
-- Use the Cloud Console to visualize the custom metric and instance group size.
+Click Next.
 
-### Task 1. Creating the application
+Important: You must use the credentials the lab provides you. Do not use your Google Cloud account credentials.
+Note: Using your own Google Cloud account for this lab may incur extra charges.
+Click through the subsequent pages:
 
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
+Accept the terms and conditions.
+Do not add recovery options or two-factor authentication (because this is a temporary account).
+Do not sign up for free trials.
+After a few moments, the Google Cloud console opens in this tab.
 
-#### Uploading the script files to Cloud Storage
+Note: To view a menu with a list of Google Cloud products and services, click the Navigation menu at the top-left. Navigation menu icon
+Enable the Dialogflow API
+In the console search field, type in "Dialogflow API".
 
-During autoscaling, the instance group will need to create new Compute Engine instances.
+Select the Dialogflow API tile.
 
-When it does, it creates the instances based on an instance template.
+Click the Enable button.
 
-Each instance needs a startup script.
+Task 1. Create your Dialogflow CX agent
+Navigate to the Dialogflow CX console, then select your Cloud Project name. Your Cloud Project name should match your Project ID for your lab like: qwiklabs-gcp-xx-xxxxxxxxxxx.
 
-Therefore, the template needs a way to reference the startup script.
+Select Create agent. If you do not see this page, refresh your browser.
 
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
+When prompted, Get started with Dialogflow CX, click Build your own.
 
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
+Call your agent "Flight Booker". Create your agent in the Global region. Google Dialogflow CX Phone Gateway currently only supports agents created in the Global region.
 
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
+After creating the agent, navigate to Agent Settings > General > Logging settings and check the boxes next to Enable Cloud Logging option. It will generate logs for this agent.
 
-### Task 2. Create a bucket
+Click Save.
 
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
+Click Check my progress to verify the objective.
+Create the agent
 
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
+Task 2. Restore the base Flight booker agent
+Download the sample virtual agent, gsp967-start-agent, to your local hard drive.
 
-Accept the default values then click **Create**.
+Select View all agents in the Agent dropdown menu at the top of the Dialogflow CX UI.
 
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
+Click the context menu (three vertical dots) to the right of your virtual agent.
 
-When the bucket is created, the **Bucket details** page opens.
+Select Restore from the expanded menu options.
 
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
+Expanded menu
 
-```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
-```
+Select the Upload radio button.
 
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
+Click on select file and select the file we downloaded earlier then, click Restore.
 
-#### Understanding the code components
+Your agent should now look like this:
 
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
+Agent flow diagram
 
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
+Click Check my progress to verify the objective.
+Restore the agent
 
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
+Task 3. Review the base Agent
+The base Agent you restored has a few items to jumpstart your IVR exploration. Take a quick review of what the agent can do before enabling IVR and other features.
 
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
+Look up Flight intent
+An intent called main.look_up_flight will be used to check for an existing reservation.
 
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
+To view this Intent, select the Manage tab, then the Intents list on the left menu. This Intent has a few training phrases to indicate that the user wants to look up existing Flight information.
+Intent page
 
-### Task 3. Creating an instance template
+This Intent will direct to the Find paid ticket page.
 
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
+Find paid ticket page
+Navigate to the Build tab. The Visual Builder shows the Start page connected to the Find paid ticket page.
+Select the Start page to see that a new Route has been added using the main.look_up_flight Intent.
+Start page
 
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
+Select the Route main.look_up_flight to see that this Intent routes to Find paid ticket page in the Transition section.
+Route page
 
-Click **Create Instance Template** at the top of the page.
+Explore the configuration of the Find paid ticket page - it will look up a confirmation number by collecting a required confirmation number and then provide a mock response of the flight details.
+To do this, a parameter has been added, as well as a route, to validate that all the parameters have been captured.
 
-Name the instance template `autoscaling-instance01`.
+Confirmation Number Parameter
 
-Set **Location** as **Global**.
+Select the Find paid ticket page and notice that the base agent already has a parameter named confirmation_number.
+Find paid ticket page
 
-Scroll down, click **Advanced options**.
+Select the confirmation_number parameter to see that its configuration has the following:
 
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
+Display name: confirmation_number
+Entity type: @sys.number
+The Required checkbox checked
+In the Fulfillment section, the Agent asks What is your flight confirmation number?
+Parameter page
 
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
+Now look how the parameter is handled once it's been gathered - the response with a mock reservation number.
+Route on collected parameter
 
-Click **Create**.
+From the Find paid ticket page, select the new route named $page.params.status = "FINAL"
+Find paid ticket page
 
-### Task 4. Creating the instance group
+In the Condition section:
+Match At Least One rule option is selected.
+Condition section
 
-In the left pane, click **Instance groups**.
+For this lab, in the Fulfillment section of this Route, the Agent says will only have two responses to be returned.
 
-Click **Create instance group** at the top of the page.
+First, a response that thanks the user for the confirmation number. Second, a mock response of the result of a flight information lookup.
 
-**Name**: `autoscaling-instance-group-1`.
+In a production scenario where there is an existing datasource of flights, you'd configure a Webhook in Dialogflow CX to connect to that backend system which stores flight information to retrieve the appropriate data. Creating a webhook and configuring it for this Page is outside the scope of this lab.
 
-For **Instance template**, select the instance template you just created.
+Agent responses text
 
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
+Now, test this agent to see what the user should expect so far.
 
-Set **Autoscaling mode** to **Off: do not autoscale**.
+Open the Simulator by selecting the Test Agent button at the upper right of the Dialgoflow console.
 
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
+Enter a phrase like I'd like to look up my flight and then a number, such as 12345.
 
-Click **Create**.
+You should receive two sentences, a thank you and the mock flight lookup.
 
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
+Simulator
 
-### Task 5. Verifying that the instance group has been created
+Note: If you typed "lookup", you will not see the correct flow! To properly train your agent, you'll need to anticipate how users will interact with it. Bookmark this link to Training phrases to learn more.
+Great! Now you're all set to configure IVR and other features!
 
-Wait to see the green check mark next to the new instance group you just created.
+Task 4. Enable IVR features
+The Speech and IVR Settings in Dialogflow can be enabled at three different levels: Agent level, Flow level and Page level.
 
-It might take the startup script several minutes to complete installation and begin reporting values.
+To enable the settings at different levels, the Agent level settings have to be enabled first. You'll do this in the next section.
 
-Click Refresh if it seems to be taking more than a few minutes.
+The Agent level settings have three features to point out for Speech and IVR:
 
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
+End of speech sensitivity: helps determine how sensitive the speech endpointing should be when the caller finishes speaking, and it uses Google Cloud Speech.
 
-### Task 6. Verifying that the Node.js script is running
+Barge-in: allows a speaker to interrupt the agent. This is helpful so that the caller doesn't have to wait to hear the full response from the agent in order to speak. Another way to understand this is, if Barge-in is disabled, the agent will only begin to listen to the user once the agent itself has finished playing its response.
 
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
+Google Cloud Storage URI: enables you to reference a path to access pre-recorded audio for playback.
 
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
+After enabling IVR settings at the Agent level, you can customize IVR settings on a per Flow level and at the Page level. Enabling settings at the Flow level overrides the default Agent level IVR settings. This is important if you want to have different settings per Flow in a multi-flow Agent.
 
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
+How you use Flow and Page level IVR settings depends on your use case. For example, if the user is dictating a number, the user will benefit from extending the timeout period so they're not cut off by the Agent at the Page level where this input occurs. If the user stays silent, because they may be searching for their flight number, this will allow the agent to help the user further by prompting on where to get that account number.
 
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
+Agent level Speech and IVR settings are from Agent Settings.
 
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
+Agent Settings, Speech and IVR tabbed page
 
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
+Flow level IVR settings are available from the Flows list and the three dots that show a context menu.
 
-Add `"nodeapp"` as line 3, so the code looks similar to this:
+Flow settings page
 
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
-```
+Page level IVR settings are available from the Pages list on the left of the console, also via the Page name's context menu.
 
-Click **Run query**.
+Page settings page
 
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
+Start with enabling the Agent level Speech and IVR settings first in the Agent Settings.
 
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
+Enable Agent Settings
+Click on Agent Settings in the upper right.
 
-### Task 7. Configure autoscaling for the instance groups
+Click the Speech and IVR tab.
 
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
+Check the box to enable each of the following:
 
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
+Enable auto speech adaptation
 
-Click the `autoscaling-instance-group-1` group.
+Enable advanced speech settings
 
-Click **Edit**.
+Enable barge-in
 
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
+Agent Settings, Speech and IVR tabbed page
 
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
+Click Save.
+Enable DTMF
+Dual-Tone Multi-Frequency (DTMF) allows users to use the keypad on their phone to provide a response instead of using their voice. There are two types of DTMF implementations: Single-digit DTMF and Multi-digit DTMF. The Single-digit DTMF collects only one digit from a user response, while Multi-digit collects multiple digits in a response. In this lab, you will learn how to implement a multi-digit DTMF for collecting flight confirmation numbers.
 
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
+Go to Find paid ticket Page and click on the Parameter confirmation_number.
 
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
+Find paid ticket page
 
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
+Scroll down to the DTMF settings and check the box to Enable DTMF. For now, assume the confirmation number is usually a 5 digit number such as "12345".
 
-- Click **Apply**.
+Set the Max digits to 5. You will not set a finish digit for this lab, but you should consider setting a finish digit for a production virtual agent as a sign that the user has finished entering digits - silence does not always mean that the user has finished typing. Also, a webhook is usually implemented to validate the numbers to make sure the user input matches the expected value in the customer database.
 
-- **Utilization target**: `150`
+Advanced speech settings page
 
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
+Click Save.
 
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
+Close the Find paid ticket page.
 
-- **Utilization target type**: `Gauge`. Click **Select**.
+You will not be able to test this feature in the simulator.
 
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
+Knowledge check
 
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
+What is DTMF?
 
-Click **Save**.
+DTMF is used to help users escalate to a live agent faster
 
-### Task 8. Watching the instance group perform autoscaling
+DTMF can be used for situations where users are allowed to provide a response to a given agent question by entering a number in the keypad
 
-The Node.js script varies the custom metric values it reports from each instance over time.
+DTMF is used to generate dual-tone multi-frequency responses
 
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
+DTMF is used to collect feedback from callers
 
-If the value goes down, the instance group detects this and scales down by removing instances.
+Enable/disable Barge-in
+Barge-in allows users to interrupt an agent in the middle of a response. This helps the user to move along the flow faster, if they are not interested in the content that the agent is providing.
 
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
+Barge-in can be enabled through the Advanced Settings on the agent level settings, flow level settings and page level settings. Since you already enabled Barge-in at the agent level, you do not need to enable barge-in everywhere else in the agent. You can disable barge-in on the pages where you do not want users to skip for certain important information. For this lab, you'll disable the barge-in on the Confirm trip page.
 
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
+Click on the Confirm trip page, then click on the entry fulfillment.
+Confirm trip page
 
-- In the left pane, click **Instance groups**.
+On the Fulfillment page, scroll down to Advanced settings and find Barge-in. Since this fulfillment provides the key information for the passenger who books the flight ticket, you do not want users to exit the flow in the middle of this response. Deselect the Enable barge-in option here by clicking Customize, which overrides the flow level barge-in setting.
 
-- Click the `builtin-igm` instance group in the list.
+Fulfillment page and Advanced speech settings highlighted
 
-- Click the **Monitoring** tab.
+Click Save.
 
-- Enable **Auto Refresh**.
+Close the Confirm trip page.
 
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
+Knowledge Check
 
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
 
-Hover your mouse over the graphs to see more details.
+What can you do to allow callers to interrupt a voice agent and ask questions?
 
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
+Add more pages
 
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
+Add NoInput event handler
 
-### Task 9. Autoscaling example
+Allow barge-in
 
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
+Adjust end of speech sensitivity
 
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
+Make parameters required
 
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
+Task 5. Handling error scenarios
+To improve the user experience for callers with a voice agent, it's important to have a graceful way to handle conditions where the agent may have misunderstood, misheard, or is unable to collect the expected information - this is called conversation repair. Repairing a conversation can help build trust with the user by showing that the voice agent is listening to the request and attempting to understand.
 
-While your autoscaling starts up, read through this graph to understand what will be happening.
+Common conversation failures include inability to detect a verbal response from the user and the inability to match the intent of the user. In these cases, you'll implement the built-in events NoInput and NoMatch, respectively, to handle these, as well as make sure you're not stuck in an error loop by escalating to an Agent Handoff page after 3 errors.
 
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
+Dialogflow CX has built-in events for NoInput and NoMatch that are available at the flow, page, and parameter levels. Additionally, there are up to 6 numerically ordered events, such as sys.no-match-1, sys.no-match-2, etc., where you will be able to decide on the number of attempts that users can make for each type of event and create customized agent responses.
 
-### Congratulations
+Flow-level event handlers apply to a whole Flow and are useful in the case where there are broad event requirements that need to be fulfilled when using a Flow, such as transitioning from one Flow to another.
+Page-level event handlers apply when there are unexpected end-user inputs or other errors in transitioning between Pages.
+Parameter-level event handlers are useful within a Page when capturing a single or a series of parameters that are needed.
+This lab will focus on Parameter-level events around capturing the ticket confirmation number.
 
+Handling silence/noise with NoInput
+Sometimes, especially in a voice scenario, the end user might not say a confirmation number quickly enough, or there is a long silence. Also, background noise or static that is not recognized as any text is considered as no-input instead of no-match.
+
+When the Agent registers this as a NoInput event, the built-in feature of Dialogflow can gracefully handle this and keep the user engaged and move along the flow.
+
+State Handler events, such as NoInput and NoMatch can be added at a variety of levels, at the Flow, on the Page itself, and also on specific Parameters.
+
+For this exercise, you'll add the No-Input and No-Match events to the ticket confirmation number parameter.
+
+Open the Find paid ticket page and open the Parameter confirmation_number.
+
+Scroll to the Reprompt Event handlers section of the Parameter and click the Add event handler link.
+
+In the Event dropdown menu, select No-input 1.
+
+In the Fulfillment section, in the Agent response, add the text Sorry, I didn't get that. Please enter or say your ticket confirmation number.
+
+Event handler page with Event handler and Fulfillment options highlighted 
+
+Click Save to save this Event.
+
+Repeat above steps with the following to set up two more events.
+
+Event	Fulfillment	Transition
+No-input 2	In order to look up your flight information, we would need your ticket confirmation number. Please say or enter the confirmation number.	
+No-input 3	You have not provided a confirmation number yet. Let me transfer you to a live agent to further assist you.	Agent handoff
+On the third, No-input 3, scroll down to the Transition section and configure the Transition to a new Page called Agent handoff.
+
+Transition section
+
+Click Save. Close the Event handler and Find paid ticket pages.
+
+Your agent should now look like this
+
+Agent flow diagram
+
+Test this by opening up the simulator via the Test Agent button, located at the upper right of the Dialogflow CX console.
+
+Test Agent button
+
+Type in a request for flight information, such as "I'd like to look up my flight information". When the agent asks for a confirmation number, instead of entering anything, press Enter a few times to simulate no input by the user.
+
+You'll see that the Agent has transitioned to the Agent handoff page after three no inputs:
+
+Simulator
+
+Knowledge Check
+
+
+How do you keep users engaged when they remain silent for too long? Select all that apply.
+
+Enable IVR-control custom payload and configure no speech timeout
+
+Enable NoMatch events and create engaging prompts
+
+Enable barge-in
+
+Route them to an operator
+
+Train intents more to improve NLU accuracy
+
+Enable NoInput events and create engaging prompts
+
+Select if the following statement is true or false:
+
+Since the No-Input Default is on the Start page of a flow, it can be triggered anywhere in the flow
+
+True
+
+False
+
+Handling unrecognized input with No-Match
+Add NoMatch events in the case that there's input received, but the agent is unable to match the confirmation_number parameter.
+
+From the Find paid ticket's Page, in the Parameter confirmation_number's panel, add 3 new events, with the third No-match 3 transitioning to the Agent handoff page.
+
+Event	Fulfillment	Transition
+No-match 1	Sorry, I didn't get that. Can you rephrase that?	
+No-match 2	I'm still having trouble. Can you try again?	
+No-match 3	Let me transfer you to someone else who can help.	Agent handoff
+Your screen should look like this:
+
+Event handlers section displaying list of events
+
+Test this by opening the simulator (Test Agent button) and asking the Agent to look up flight information. Since you defined the flight number as a @sys.number, the Agent will be expecting all numbers. If you respond to the Agent with letters, that'll be registered as a NoMatch. After three attempts, you'll see the NoMatch handler transition to the Agent handoff page.
+
+Simulator page with Agent handoff page highlighted
+
+Knowledge Check
+
+Select if the following statement is true or false:
+
+Agent says prompts for sys.no-match-default and sys.no-input-default cannot be customized.
+
+True
+
+False
+
+A note on Agent Handoff
+For this example we've added a page called Agent handoff which is used as the destination for the expected transfer to a live agent in the case this virtual agent is unable to detect a response or determine the correct confirmation number.
+
+For this lab, while there is no target destination for a live agent, you can see where this would be configured. Dialgoflow CX provides a Fulfillment type that can be used to signal to the telephony or chat client to perform the required transfer.
+
+To see where this is located, open the Agent handoff page and select the Entry fulfillment.
+
+Select Live agent handoff from the Add dialogue option dropdown.
+
+Add dialogue option dropdown menu
+
+This will result in an area to provide a custom JSON message.
+
+Live agent handoff text field
+
+Every target live agent system is different. Refer to the system's documentation as to what message format will be necessary to add to provide the proper communication parameters.
+
+As an example, if you're using Business Messages, the format that you'd enter here would look something like this:
+
+{
+   "userStatus": {
+
+    "requestedLiveAgent": true
+
+}
+}
+Copied!
+Please check the Business Messages documentation for the precise JSON message.
+
+For more information on Business Messages live agent handoff formats, see Handoff from bot to live agent.
+
+Task 6. Add SSML support to your agent
+Speech Synthesis Markup Language (SSML) enables you to customize your audio responses by providing details on pauses, audio formatting for numbers, dates, or text. This allows for your agent to have a more natural conversation.
+
+<speak>is the root element of SSML response. Without this element, your text cannot talk. Implement them on the Find paid ticket page.
+
+From the Find paid ticket page, click on the $page.params.status="FINAL" route and scroll down to the fulfillment.
+
+Add the <speak> element to the entire text of the second fulfillment. Remember to close the text with </speak>.
+
+Second fulfillment field
+
+Now, increase the pause after "Here is the flight information". You can use the empty element <break time> to control the pausing between words or sentences. The length of the break time can be either seconds or milliseconds.
+
+Add a pause after "Here is the flight information" with the following:
+
+<break time = "1s"/>
+Copied!
+This is what it will look like after you add the break time.
+
+Second fulfillment field
+
+You can also adjust the speed of the response by using the <prosody> element.
+
+Add the following before "Here is the flight information" so that this response will be rendered at a slower speech rate to allow users to take notes of their flight details:
+
+<prosody rate="slow">
+Copied!
+When you finish adding the above mentioned SSML, this is what your fulfillment will look like.
+
+Second fulfillment field
+In the next section you'll have an opportunity to test some of the settings you've created for your Agent. If you're running out of time, go as far as you can. The next section will not be part of your lab's score.
+
+Task 7. Optional: Testing the agent with Dialogflow CX phone gateway
+Dialogflow CX can be integrated with various conversation and telephony providers either directly through the 1-click Integrations in the Dialogflow Console or via the Dialogflow CX API.
+
+Dialogflow CX includes a preview feature called the Dialogflow CX Phone Gateway that provides a telephone interface to your agent. For this lab, you'll use the Dialogflow CX Phone Gateway.
+
+Please note that this feature has limited functionality. Current limitations are as follows:
+
+Agents must be in the global region
+Only US phone numbers are supported
+Features NOT supported relevant to this lab are: DTMF
+Task 8. Set up a phone gateway
+From the Manage tab in the Dialogflow CX console, select Integrations.
+In the big CX Phone Gateway screen, click the Manage button.
+CX Phone Gateway screen
+Click Create new.
+Create new button
+In Country Code, choose United States.
+
+Enter an Area code of your choice, or leave it blank.
+
+Then click Request.
+
+Request button
+Select a phone number option, then add a display name.
+
+Press Save.
+
+You've reserved a number! Phone numbers page with the new number listed
+
+Click Check my progress to verify the objective.
+Set up a phone number for agent
+
+Test your agent
+On your personal phone, call in to the phone number you created and follow the voice prompts. Try out the no-match, no-input, and barge-in features you enabled during this lab. (DTMF is not currently supported by the CX Gateway.)
+If the agent reaches the end session state, the call ends.
+
+Task 9. (Optional) Exporting your agent
+When you build an agent for one project, you can export it to use in a different project. You can export your agent to continue building upon it in your own personal project!
+
+In the Agent drop down at the top of the Dialogflow CX console, click View all agents.
+Agent drop down menu
+On the Agent list screen, click the context menu next to your agent and then click Export.
+Context menu
+On the Export Agent screen, choose Download to local file, then click Export.
+Export Agent screen
 Congratulations!
+You've made your Dialogflow CX Agent IVR-ready! In this lab, you have learned how to configure Speech and IVR Settings and implement IVR features such as DTMF and Barge-in. You have also learned to use No-Input and No-Match to handle conversational repair and to use SSML to help create a more natural speech.
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Finish your quest
+This self-paced lab is part of the Create Conversational AI Agents with Dialogflow CX quest. A quest is a series of related labs that form a learning path. Completing this quest earns you a badge to recognize your achievement. You can make your badge or badges public and link to them in your online resume or social media account. Enroll in this quest and get immediate completion credit. Refer to the Google Cloud Skills Boost catalog for all available quests.
 
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+Next steps / Learn more
+Built-in events and their levels: https://cloud.google.com/dialogflow/cx/docs/c

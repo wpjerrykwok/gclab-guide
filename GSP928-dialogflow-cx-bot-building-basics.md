@@ -1,273 +1,394 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+Dialogflow CX: Bot Building Basics
+experiment
+Lab
+schedule
+1 hour 30 minutes
+universal_currency_alt
+No cost
+show_chart
+Introductory
+info
+This lab may incorporate AI tools to support your learning.
+GSP928
+Google Cloud self-paced labs logo
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
+Overview
+Dialogflow CX provides a simple, visual bot building approach to virtual agent design. Bot designers now have a much clearer picture of the overall bot building process and multiple designers are able to easily collaborate on the same agent build. Dialogflow CX supports many languages for your agent to use and understand, but this lab will be using only English.
 
-## GSP087
+In this lab you will build a conversational agent using Dialogflow CX.
 
-### Overview
+Prerequisites
+You should be generally familiar with the basic concepts of conversational AI. Read through these Sample Transcripts to get an idea of what client transcripts might look like. Often the first step in creating an agent is to read through client transcripts and/or other contextual data to understand the use case and specific business requirements.
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Setup
+Before you click the Start Lab button
+Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click Start Lab, shows how long Google Cloud resources will be made available to you.
 
-#### Application architecture
+This hands-on lab lets you do the lab activities yourself in a real cloud environment, not in a simulation or demo environment. It does so by giving you new, temporary credentials that you use to sign in and access Google Cloud for the duration of the lab.
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+To complete this lab, you need:
 
-The script reports a numeric value to a Cloud monitoring metric.
+Access to a standard internet browser (Chrome browser recommended).
+Note: Use an Incognito or private browser window to run this lab. This prevents any conflicts between your personal account and the Student account, which may cause extra charges incurred to your personal account.
+Time to complete the lab---remember, once you start, you cannot pause a lab.
+Note: If you already have your own personal Google Cloud account or project, do not use it for this lab to avoid extra charges to your account.
+How to start your lab and sign in to the Google Cloud console
+Click the Start Lab button. If you need to pay for the lab, a pop-up opens for you to select your payment method. On the left is the Lab Details panel with the following:
 
-You do not need to know Node.js or JavaScript for this lab.
+The Open Google Cloud console button
+Time remaining
+The temporary credentials that you must use for this lab
+Other information, if needed, to step through this lab
+Click Open Google Cloud console (or right-click and select Open Link in Incognito Window if you are running the Chrome browser).
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+The lab spins up resources, and then opens another tab that shows the Sign in page.
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+Tip: Arrange the tabs in separate windows, side-by-side.
+
+Note: If you see the Choose an account dialog, click Use Another Account.
+If necessary, copy the Username below and paste it into the Sign in dialog.
+
+student-01-bd37c67a34bb@qwiklabs.net
+Copied!
+You can also find the Username in the Lab Details panel.
+
+Click Next.
+
+Copy the Password below and paste it into the Welcome dialog.
+
+Zte9CdOVRyCJ
+Copied!
+You can also find the Password in the Lab Details panel.
+
+Click Next.
+
+Important: You must use the credentials the lab provides you. Do not use your Google Cloud account credentials.
+Note: Using your own Google Cloud account for this lab may incur extra charges.
+Click through the subsequent pages:
+
+Accept the terms and conditions.
+Do not add recovery options or two-factor authentication (because this is a temporary account).
+Do not sign up for free trials.
+After a few moments, the Google Cloud console opens in this tab.
+
+Note: To view a menu with a list of Google Cloud products and services, click the Navigation menu at the top-left. Navigation menu icon
+Enable the Dialogflow API
+In the console search field, type in "Dialogflow API".
+Select the Dialogflow API tile.
+Click the Enable button.
+Task 1. Create your agent
+Visit the Dialogflow CX console, then select your Cloud Project name. Your Cloud Project name should match your Project ID for your lab like: qwiklabs-gcp-xx-xxxxxxxxxxx
+Dialogflow CX console with project name highlighted
+Click Check my progress to verify the objective.
+Assessment Completed!
+Enable API
+Assessment Completed!
+
+Click Create agent > Build your own If you do not see this page, refresh your browser.
+Agents page with Create agents button highlighted
+Name your agent Flight booker.
+
+Pick global from the Location drop-down.
+
+Click Create.
+
+Create agent window, with display name and location fields completed
+After creating the agent, navigate to Agent Settings > General > Logging settings and check the boxes next to Enable Cloud Logging and Enable Conversation History option. It will generate logs for this agent.
+
+Click Save.
+
+Agent Settings General tabbed page with Enable stackdriver logging option selected
+Click Check my progress to verify the objective.
+
+Assessment Completed!
+Create an Agent
+Assessment Completed!
+Knowledge check
+
+
+You must enable the Dialogflow API for your project to be able to access the Dialogflow CX console.
+check
+True
+
+False
+
+Task 2. Intents
+Intents are the reasons an end-user has for interacting with the agent, for example, ordering something. You can create an intent for every topic they may want to navigate.
+
+Intents can be reused across Pages and Flows. Each intent is defined by training phrases end-users typically ask. These can be annotated or "labeled" to collect specific parameters, such as arrival city or departure date.
+
+Dialogflow CX will suggest annotations as you include training phrases for the intent; they can also be manually annotated to collect the parameter values you want to extract from the end-user's interaction with your agent.
+
+Recommended: in order to reuse intents as well as make maintenance easier, name your intents with clear and explicit names.
+
+Format of intent: category.some_description
+
+Example of formatting:
+
+Core Intents: main.book_a_flight
+Common intent but not core: supplemental.flight_emissions
+Reusable intents: confirmation.yes, confirmation_no, redirect.live_agent.
+Create your first intent
+Click Manage > Intents > + Create :
+Intents tab with Create button highlighted
+Display Name: main.book_a_flight
+Under the Training Phrases header, add each of the following phrases into Dialogflow, click Enter after each phrase:
+Book a flight
+Can you book my flight to San Francisco next month
+I want to use my reward points to book a flight from Milan in October
+My family is visiting next week and we need to book 6 round trip tickets
+Four business class tickets from Taiwan to Dubai for June 2nd to 30th
+I need a flight Saturday from LAX to San Jose
+Book SFO to MIA on August 10th one way
+Help me book a ticket from 4/10 to 4/15 from Mexico City to Medellin Colombia please
+I am booking a surprise trip for my mom, can you help arrange that for May 10th to May 25th to Costa Rica
+Do you have any cheap flights to NYC for this weekend
+I want to fly in my cousin from Montreal on August 8th
+I want to find two seats to Panama City on July 4th
+For my wedding anniversary we want to go to Seattle for Christmas
+Note: For higher model accuracy, using 20-50 training phrases with short and long response options is recommended.
+Click Save.
+Intents tab with Save button highlighted
+Some words are highlighted because Dialogflow has automatically labeled the entities, such as a date, place, or number.
+Intents page displaying highlighted dates, places, and numbers
+Note: You can also add training phrases in bulk by creating a training phrase CSV file and uploading it to Dialogflow.
+Task 3. Flows and pages
+Flows are used to define topics and the associated conversational paths. Every agent has one flow called the Default Start Flow. This single flow may be all you need for a simple agent.
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+More complicated agents may require additional flows, and different development team members can be responsible for building and maintaining these flows.
 
-The application includes the following components:
+Default Start Flow diagram
+Every flow starts with a Page, and is made of one or multiple different pages thereafter to handle the conversation within a particular flow. The current page an end-user is on is considered the "active page". Each page can be configured to collect any required information from the end-user.
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+Build from your Default Start Flow
+The page your agent starts from is called the Default Start Flow. Pages store routing logic, responses (known as Fulfillment), specific actions to take if an intent cannot be matched (known as no-match) or receives no-input (which is when the agent does not receive a response in time).
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+Click Build.
+Click Start to open the page.
+Default Start Flow pagewith Build and Start button highlighted
+From the expanded options on the Start page, select the + icon next to Routes.
+Routes and plus icon highlighted
+Select the intent main.book_a_flight from the drop-down, then click Save.
+Route window with main.book_a_flight intent selected and Save button highlighted
+Next, in the Routes section, click the main.book_a_flight route. Routes section with main.book_a_flight route highlighted
+
+Scroll down to Transition and choose + new Page from the drop-down.
+
+Name the page Ticket information and click Save.
+
+Highlighted Page name field populated with Ticket information
+Exit out of the windows to return to the main display of flows to see your new Ticket information page connected to the Start page.
+Main display with flow diagram
+The beginning of the flow now includes a greeting, and will then proceed to the Ticket information page when the main.book_a_flight intent is matched. On the Ticket Information page you will collect parameters from the end-user so they can book their flight.
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+Task 4. Entities and parameters
+Entities define the type of information you wish to extract from an end-user, ex: city you want to fly to. Use Dialogflow's built-in " system entities'' for matching dates, times, colors, email addresses, and so on.
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
+System entities can also be “extended” to include values that are not part of the default system values. If you need to create a fully customized entity, you can do so by creating a Custom Entity type for matching data that is custom to your business and not found as a system entity.
 
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
-
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
-
-#### Objectives
-
-In this lab, you will learn how to perform the following tasks:
-
-- Deploy an autoscaling Compute Engine instance group.
-
-- Create a custom metric used to scale the instance group.
-
-- Use the Cloud Console to visualize the custom metric and instance group size.
-
-### Task 1. Creating the application
-
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
-
-#### Uploading the script files to Cloud Storage
-
-During autoscaling, the instance group will need to create new Compute Engine instances.
-
-When it does, it creates the instances based on an instance template.
-
-Each instance needs a startup script.
-
-Therefore, the template needs a way to reference the startup script.
-
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
-
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
-
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
-
-### Task 2. Create a bucket
-
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
-
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
-
-Accept the default values then click **Create**.
-
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
-
-When the bucket is created, the **Bucket details** page opens.
-
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
-
-```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
-```
-
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
-
-#### Understanding the code components
-
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
-
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
-
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
-
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
-
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
-
-### Task 3. Creating an instance template
-
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
-
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
-
-Click **Create Instance Template** at the top of the page.
-
-Name the instance template `autoscaling-instance01`.
-
-Set **Location** as **Global**.
-
-Scroll down, click **Advanced options**.
-
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
-
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
-
-Click **Create**.
-
-### Task 4. Creating the instance group
-
-In the left pane, click **Instance groups**.
-
-Click **Create instance group** at the top of the page.
-
-**Name**: `autoscaling-instance-group-1`.
-
-For **Instance template**, select the instance template you just created.
-
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
-
-Set **Autoscaling mode** to **Off: do not autoscale**.
-
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
-
-Click **Create**.
-
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
-
-### Task 5. Verifying that the instance group has been created
-
-Wait to see the green check mark next to the new instance group you just created.
-
-It might take the startup script several minutes to complete installation and begin reporting values.
-
-Click Refresh if it seems to be taking more than a few minutes.
-
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
-
-### Task 6. Verifying that the Node.js script is running
-
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
-
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
-
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
-
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
-
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
-
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
-
-Add `"nodeapp"` as line 3, so the code looks similar to this:
-
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
-```
-
-Click **Run query**.
-
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
-
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
-
-### Task 7. Configure autoscaling for the instance groups
-
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
-
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
-
-Click the `autoscaling-instance-group-1` group.
-
-Click **Edit**.
-
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
-
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
-
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
-
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
-
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
-
-- Click **Apply**.
-
-- **Utilization target**: `150`
-
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
-
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
-
-- **Utilization target type**: `Gauge`. Click **Select**.
-
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
-
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
-
-Click **Save**.
-
-### Task 8. Watching the instance group perform autoscaling
-
-The Node.js script varies the custom metric values it reports from each instance over time.
-
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
-
-If the value goes down, the instance group detects this and scales down by removing instances.
-
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
-
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
-
-- In the left pane, click **Instance groups**.
-
-- Click the `builtin-igm` instance group in the list.
-
-- Click the **Monitoring** tab.
-
-- Enable **Auto Refresh**.
-
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
-
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
-
-Hover your mouse over the graphs to see more details.
-
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
-
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
-
-### Task 9. Autoscaling example
-
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
-
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
-
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
-
-While your autoscaling starts up, read through this graph to understand what will be happening.
-
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
-
-### Congratulations
-
+Parameters are information supplied by the end-user during a session, such as date, time, and destination city. Each parameter has a name and an entity type. They are written in snake_case (lowercase with underscores between words)
+
+Create your first set of parameters
+Next you will use an entity to extract a required parameter from the end-user.
+
+Click on the page Ticket Information, then the + by Parameters to collect flight data.
+Enter departure_city in the Display name field.
+Choose @sys.geo-city from the Entity type drop-down.
+Scroll down to Initial prompt fulfillment > Agent responses > Agent Says and add What city would you like the flight to depart from?
+Click Save.
+Initial prompt fulfillment section with Agent says field populated
+Exit out of this window to make another parameter.
+Click the + by Parameters again to create 4 additional parameters one by one with the following name, entity type, and how the agent will prompt the end-user.
+Display name	Entity type	Agent says
+departure_date	@sys.date	What is the month and day of the departure?
+destination_city	@sys.geo-city	What is your destination city?
+return_date	@sys.date	What is the month and day for the returning flight?
+passenger_name	@sys.any	What is the passenger's name?
+When finished they are listed like this:
+
+Parameters page displaying the list of added parameters
+
+Note: The order in which the parameters are listed affects the order in which the flight booking agent will ask for each. You can easily change the order by dragging parameters up or down.
+Knowledge check
+
+
+The primary reason that an end-user is interacting with your agent is captured by which resource type?
+
+Pages
+
+Entities
+check
+Intents
+close
+Parameters
+
+Flows
+
+Task 5. Conditions
+Once the agent has collected the necessary 5 flight booking parameters, you want to route the end user to another page using a routing condition, which you will create next.
+
+Exit out of the parameter window to return to the Ticket information page again.
+Scroll down to locate Routes and click the + sign next to it.
+Scroll down to Condition > Condition rules > select "Match AT LEAST ONE rule (OR)"
+In the Parameter field enter $page.params.status.
+Choose the = sign in the Operand drop-down.
+In the Value field enter: "FINAL" (ensure you include the double quotes).
+Click Save.
+Condition section with Parameter field highlighted
+Knowledge check
+
+
+What’s the correct way to check if all parameters on a Page are filled?
+
+$session.params.status = FINAL
+
+$session.params.status = “FINAL”
+
+#context.params.status = FINAL
+check
+$page.params.status = “FINAL”
+
+$page.params.status = FINAL
+
+#context.params.status = “FINAL”
+
+Task 6. Fulfillment
+Now add a response to say to the end-user when all 5 of their booking parameters are collected. These responses are called Fulfillment.
+
+From the condition you just made, scroll down a bit and locate the section called Fulfillment.
+Under Agent responses type the following for Agent says: Thank you for that information. Let me check on the availability of your ticket.
+Click Save.
+(Now stay on this page while you read on to the next step of confirming information.)
+
+Fulfillment section with highlighted populated Agent says field
+Task 7. Confirming information
+After offering a response (or fulfillment), you need to create a transition to a new page that will repeat back to the end-user if the travel information collected (parameters) are correct.
+
+Continue to scroll down (past the fulfillment you just created) until you reach Transition.
+On the Page field, select the drop down to choose + new Page.
+Type Confirm trip in the field called Page name.
+Transition section with populated Page name field highlighted
+Click Save.
+Exit out of the window.
+Take a look at the flow of your 3 pages.
+Main display with flow diagram. Flow points include Start, Ticket information, and Confirm Trip
+Repeating back the parameters collected from end-users
+Session Parameters store information previously collected from the end-user and are active throughout the session. They also help you repeat information back to the end-user.
+
+For example, we can have the agent repeat back a passenger's name: "Thanks for providing that information, $session.params.passenger_name." This displays to the end-user as "Thanks for providing information, John Day."
+
+They are formatted as follows:
+
+Prefix: $session.params.
+Entity Name: passenger_name
+So referencing the departure city would look like: $session.params.departure_city
+
+Starting from the Build view, click on the Confirm Trip page > Entry fulfillment > Edit fulfillment field.
+Confirm trip window with Edit fulfillment field highlighted
+Since you used 5 parameters, you can repeat them back to the user via the following session parameters. Paste the following text within the Agent says section:
+This is to confirm that $session.params.passenger_name will fly
+From: $session.params.departure_city
+To: $session.params.destination_city
+Leaving on: $session.params.departure_date
+Returning on: $session.params.return_date
+
+Is this correct?
+Copied!
+Fullfillment window with Agent says field populated
+Then click Save.
+This is what it will look like to the end-user when the virtual agent repeats back the collected session parameters:
+Virtual agent displaying the collected session parameters
+Positive confirmation route
+Exit out of the window to return to your Confirm Trip page. Click + next to Routes.
+Confirm trip page with plus button highlighted
+Click the Intents drop-down , then click + new Intent.
+Intent drop-down menu with + new intent option highlighted
+In Display name type confirmation.yes.
+In Training phrases enter yes then Enter (you can add more phrases like "correct", "yup", etc., to improve the NLU matching for this intent).
+Training phrases section with yes and correct populated in the text field
+Click Save.
+After saving, scroll down to the Fulfillment section and under Agent responses enter Great, your flight is booked! for Agent says.
+Highlighted Agent says field displaying the message: Great, your flight is booked!
+Then click Save.
+
+Click the back arrow, next to Route.
+
+Back arrow highlighted
+Negative confirmation route
+Now add logic to route an end-user to recollect their flight parameters if they say the information is incorrect.
+
+Still on the Routes section select Add route.
+Add route button highlighted
+From the Intents drop-down choose + new Intent.
+Name the intent confirmation.no in the Display name field.
+Highlighted Display name field with confirmation.no entered
+Scroll down to the Training phrases section type no then click Enter.
+Training phrases section with no highlighted
+Click Save.
+Next, scroll down to the section called Transition > Page, then choose Ticket information from the drop-down.
+Transition section with Ticket information selected i the Page dropdown menu
+Note: This is to prompt the user again for their flight information.
+Scroll up to Parameter presets and click Add parameter . Enter the following 5 values and assign their value to null without the quotation marks.
+Note: You will need to delete the quotation marks in the value column and type null. This is to delete the parameters collected from the end-user.
+Parameter	Value
+departure_city	null
+destination_city	null
+departure_date	null
+return_date	null
+passenger_name	null
+Parameter presets section with null value for each of the five parameters
+The purpose of this is to remove the value that was previously collected from the end user to allow them to submit a new value. If this step is missed, it might result in an infinite loop scenario in your bot!
+
+Click Save.
+Exit out of the window to return to the Build view, you will now see how all 3 pages flow. Note that the last page has two arrows between the Confirm trip and Ticket information page because the confirmation.no intent is linked back.
+Build view displaying the flow diagram
+Knowledge check
+
+
+Select the agent response that’s best for casually confirming that tickets are booked.
+close
+You’re all set! Look for the tickets in your email later today! Now, are there any other events you’re interested in?
+check
+The transaction you requested has been completed. You will receive an electronic copy of your tickets within the next 6 hours. Now, would you like to continue browsing upcoming events?
+
+Task 8. Testing
+To test that your agent works as intended, click on Test Agent in the upper right corner of the screen.
+
+Interact with the agent as if you were the end-user. As you move through the main flow, notice the pages, intents, and transitions you created.
+
+Depending on how you arranged your parameter collection, you can try typing in the following sample dialogue:
+
+I'd like to book a flight
+Austin
+Tomorrow
+Boston
+Next Friday
+Mickey Mouse
+Yes
+This should result in a successful transaction through your agent, commonly known as the “happy path”.
+
+Here is an example of the above agent testing in the Test Agent console:
+
+Test Agent console with simulator flow example
+
+Click Check my progress to verify the objective.
+Assessment Completed!
+Test the agent
+Assessment Completed!
+
+Task 9. Exporting your agent
+When you build an agent for one project, you can export it to use in a different project. You can export your agent and save it to use in future labs or to continue building in your own personal project!
+
+In the Agent drop down at the top of the Dialogflow CX console, click View all agents.
+Expanded Agent dropdown with View all agents button highlighted
+On the Agent list screen, click the context menu next to your agent and then click Export.
+Expanded context menu with Export button highlighted
+On the Export Agent screen, choose Download to local file, then click Export.
+Export Agent page with Download option selected and highlighted
 Congratulations!
+You have built a Dialogflow CX Agent and become familiar with the foundational concepts.
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Finish your quest
+This self-paced lab is part of the Create Conversational AI Agents with Dialogflow CX quest. A quest is a series of related labs that form a learning path. Completing this quest earns you a badge to recognize your achievement. You can make your badge or badges public and link to them in your online resume or social media account. Enroll in this quest to get immediate credit. See the Google Cloud Skills Boost catalog to see all available quests.
 
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+Next steps / learn more

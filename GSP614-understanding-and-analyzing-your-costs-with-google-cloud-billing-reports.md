@@ -1,241 +1,154 @@
----
-title: "Walkthrough... Monitoring Multiple Projects with Cloud Monitoring (GSP090)"
-tags: [Google Cloud, how-to]
-style: border
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+# Understanding and Analyzing Your Costs with Google Cloud Billing Reports
 
-# Monitoring Multiple Projects with Cloud Monitoring
+## GSP614
 
-## GSP090
+## Overview
 
-### Overview
+Google Cloud cost management tools provide greater visibility, accountability, control, and intelligence so that you can scale your business in the cloud with confidence.
 
-Cloud Monitoring provides dashboards and alerts so you can review performance metrics for cloud services, virtual machines, and common open source servers such as MongoDB, Apache, Nginx, Elasticsearch, and more. 
+Tailored to meet the needs of organizations of all sizes, these tools help reduce complexity and increase the predictability of your cloud costs.
 
-You configure Cloud Monitoring in the Console.
+Google Cloud Billing reports is a cost management tool that provides built-in reporting within the console. 
 
-In this hands-on lab you will have 2 projects to monitor in Cloud Monitoring. 
+In this lab, you familiarize yourself with Billing reports and understand how to answer fundamental cost management questions.
 
-You'll add them both to a Cloud Monitoring account and monitor the metrics the virtual machines in the projects provide.
+## Objectives
 
-#### Objectives
+In this lab you learn how to perform the following tasks:
 
-In this lab, you will learn how to:
+- Explore Cloud Billing report charts in the Google Cloud console using a sample billing account.
+- Analyze cost trends using report filters.
+- Explore Cloud Billing cost drivers.
+- Review a summary of costs.
 
-- Create a Cloud Monitoring account that has two Google Cloud projects.
+## Task 1. Access the sample Cloud Billing account
 
-- Monitor across both projects from the single Cloud Monitoring account.
+In this task you access the sample billing report that is used in this lab.
 
-#### Setup for two projects
+To open the billing report for a sample billing account, right click the following link and select Open link in incognito window:
 
-For this lab you are given two Project IDs. 
+Sample Billing Report.
 
-When you logged in, by default you logged in to Project 1. 
+The link opens the Google Cloud console in the Billing Reports window. In the remainder of this lab you will explore the various features of billing.
 
-You'll need to keep track of your projects, and you can return to this page to remind yourself which is which. 
+Note: To access Google Cloud Billing in your own environment, you'll need one of the Cloud Billing roles outlined at Overview of Cloud Billing access control.
 
-The projects will change order, so knowing the last few digits of the name will help you identify them.
+## Task 2. Explore Cloud Billing report charts
 
-Project 1 already has a virtual machine (and you can look at it by going to **Compute Engine** > **VM instances**). 
+In this task you explore your Cloud Billing report chart to see how much you are spending. 
 
-You will create a virtual machine in Project 2, and then monitor both projects in Cloud Monitoring.
+You have a variety of options available to customize your report views, including filters and other settings. 
 
-### Task 1. Create Project 2's virtual machine
+Your report view changes depending on the filter selections you choose.
 
-At the top of the screen, click on the dropdown arrow next to Project 1's name.
+In the Cloud console, in the **Billing** Billing menu icon menu, click **Reports**.
 
-Make sure that you're on the **All** tab, then click on the name of **Project 2** to go into it.
+This Reports page includes a chart that plots usage costs for all projects linked to a billing account.
 
-Select **Navigation menu** > **Compute Engine** to open the VM instances window.
+In the top left, the actual cost to date is displayed for the current month, including a comparison to the cost over the same number of days in the preceding month. 
 
-Click **+Create instance** to create a new instance.
+In the top right, the forecasted total cost is displayed for the current month, including a comparison to the previous month.
 
-Name this instance **instance2**.
+To visualize your daily costs grouped by project, hold the pointer over a specific day on one of the colors in the chart to compare the cost for that project to the total cost for the day.
 
-Select **Region** `us-west1` and **Zone** `us-west1-b`.
+The cost trend line (the dotted line) is visible when your selected time period includes a date in the future.
 
-Leave all of the options at the default settings.
+The cost trend line indicates how much you're forecasted to spend in that time period.
 
-Click **Create**.
+It also reflects both the long term trend and any consistent monthly cycles. Learn more about trends at Viewing your forecasted costs.
 
-Now you have resources to monitor in both of your projects.
+Below the chart is a summary of the costs by project in the selected time period.
 
-> Note: Make sure that you are in Project 2 to proceed further in the lab.
+### Filters and grouping
 
-#### Create a Monitoring Metrics Scope
+Customize your view using the drop-downs for filtering and grouping.
 
-Set up a Monitoring Metrics Scope that's tied to your Google Cloud Project. The following steps create a new account that has a free trial of Monitoring.
+#### View your charges by invoice and without taxes or adjustments
 
-In the Cloud Console, click **Navigation menu** > View All Products > **Monitoring**.
+Click the expand icon Expand icon in the upper right.
 
-When the Monitoring **Overview** page opens, your metrics scope project is ready.
+In the **Time range** section, select **Invoice month** and set your **From** and **To** month range.
 
-Now add both projects to Monitoring.
+View the chart. Notice the **Reports** page updates to match the invoice month and tax option you selected. The table below the chart displays the cost breakdown based on your filter selections.
 
-In the left panel, click **Monitoring Settings** and then in the **Settings** window, click **+Add GCP PROJECTS** in the GCP Projects section.
+## Task 3. Analyze your cost trends
 
-Click **Select Projects**.
+In this task you analyze your cost trends. 
 
-Check Project ID 1 and click **Select**.
+You filter the view by time range, location, and credits to see how your costs have changed.
 
-Click **Add projects**.
+### View your cost trend over a specified time period
 
-### Task 2. Monitoring Overview
+In the **Filters** pane, for **Time range**, select **Usage date**.
 
-Click on **Overview** in the left menu. 
+Click **Custom range**, and then select **Last 30 days**.
 
-You'll be adding a lot of good information here as the lab goes along. 
+The chart shows the last 30 days of usage. As before, the top of the graph shows your costs compared to the previous time period so you can easily compare how your costs trend over time.
 
-First, you'll create a Cloud Monitoring Group for visibility across both projects.
+### View your cost trend by location
 
-#### About Cloud Monitoring groups
+In the **Filters** pane, expand the **Locations** section.
 
-Cloud Monitoring lets you define and monitor groups of resources, such as VM instances, databases, and load balancers. 
+Under **Geography**, click **Americas**.
 
-Groups can be based on names, tags, regions, applications, and other criteria. 
+Notice how the specific Americas regions and multi-regions are selected and that the graph changes to reflect this.
 
-You can also create subgroups, up to six levels deep, within groups.
+Under **Region & multi-region**, click **europe-west1**.
 
-#### Create a Cloud Monitoring group
+Notice that the **europe-west1** region is added to the graph.
 
-In the left menu, click **Groups**, then click **+Create group**.
+Clear the Geography and Region & multi-region options previously selected, and then collapse the Locations group.
 
-Name your group `DemoGroup`.
+### View your cost trend by credits
 
-The **Criteria** is a set of rules that will dynamically evaluate which resources should be part of this group.
+You can use credits filters to change the view of your cost calculations. You can select all applicable credits (default) to be included in the cost calculations, or you can clear some or all of the credit options to exclude credits from the cost calculations.
 
-Cloud Monitoring dynamically determines which resources belong to your group based on the filter criteria that you set up.
+For more information about credits, see View and analyze your credits.
 
-- In the first dropdown field (**Type**), **Name** is selected by default.
+### Sustained use discounts
 
-- In the second dropdown (**Operator**), **Contains** is selected by default.
+Expand the **Credits** section.
 
-- In the third field (**Value**), type in `instance` since both of the instance names in both of your projects start with the word `instance`.
+Clear the **Sustained use discounts** checkbox.
 
-Click **Done**, then click **Create**.
+Select the **Sustained use discounts** checkbox to see how the chart changes.
 
-### Task 3. Uptime check for your group
+Collapse the **Credits** section.
 
-Uptime checks let you quickly verify the health of any web page, instance, or group of resources. 
+## Task 4. Explore your cost drivers
 
-Each configured check is regularly contacted from a variety of locations around the world. 
+In this task you explore your billing reports to visualize and investigate any unexpected changes in cost.
 
-Uptime checks can be used as conditions in alerting policy definitions.
+### Find the unexpected cost increase
 
-In the left menu, click **Uptime checks**, then click **+Create uptime check**.
+Click **Reports**.
 
-Create your uptime check with the following information:
+In the **Filters** pane, for **Time range**, select **Invoice month**.
 
-- **Protocol**: `TCP`
+To discover the cause of the large increase in cost, hold the pointer over the spike in the chart to identify the project.
 
-- **Resource Type**: `Instance`
+In this case the project causing the large cost increase is CTG-Dev.
 
-- **Applies To**: `Group`, and then select `DemoGroup`.
+In **Group by**, click Service.
 
-- **Port**: `22`
+To find out which service caused the increase in cost, hold the pointer over the spike in the graph.
 
-- **Check frequency**: `1 minute`, then click **Continue**.
+In this case it appears that BigQuery caused the increase in cost.
 
-Click **Continue** again.
+In the **Filters** pane, for Group by, click **SKU**.
 
-Leave the slider **ON** state for **Create an alert** option in **Alert & notification** section, then click **Continue**.
+In this case, the BigQuery Analysis SKU was the highest cost on this day. This SKU is charged when executing queries using BigQuery.
 
-For **Title**: enter `DemoGroup uptime check`.
+## Task 5. Review a summary of your costs
 
-Click **TEST** to verify that your uptime check can connect to the resource.
+In this task you review a summary of your costs. Billing reports show current cost trends and forecasted costs. The cost breakdown report shows what you would have spent at the on-demand price for your Google Cloud usage, and how your final invoice amount was affected by any credits, adjustments, and taxes.
 
-When you see a green check mark everything can connect, click **Create**.
+In the Cloud console, in the **Billing** Billing menu icon menu, click **Cost breakdown**.
 
-### Task 4. Alerting policy for the group
+The graph shows your total costs for a specific invoice month and how credits and taxes affected the final amount invoiced for that month. For example, sustained use discounts automatically apply to Compute Engine resources that run a significant portion of the billing month, helping save you money. The sample chart below shows the total cost of usage minus the credits applied for sustained use discounts.
 
-Use Cloud Monitoring to create one or more alerting policies.
+To learn more see, Committed use discounts and sustained use discounts.
 
-In the left menu, click **Uptime checks**.
+## Congratulations
 
-Click the three dots at the far right of your Display Name and click **Add alert policy**.
-
-Click **+Add alert condition**.
-
-Select the previously created **Uptime health check on DemoGroup** condition from the left section and click **Delete alert condition**.
-
-In your **New condition**, click **Select a metric**.
-
-Uncheck the **Active**.
-
-In the **Select a metric** field, search `check_passed` and click **VM Instance** > **Uptime_check** > **Check passed**. Click **Apply**.
-
-Click **Add a filter**, set the **Filter** to `check_id` and select `demogroup-uptime-check-id` as the **Value**. Click **Done**.
-
-> Note: If `demogroup-uptime-check-id` check_id is unavailable, please wait for a few seconds and try.
-
-In left panel, click on the arrow button next to **VM Instance-Check passed**, then click on **Configure trigger**.
-
-Select **Metric absence** as Condition type and click **Next**.
-
-Turn off **Configure notifications**.
-
-In the **Alert policy name** field, enter the **Name** as `Uptime Check Policy`. Click **Next**.
-
-Click **Create policy**.
-
-### Task 5. Custom dashboard for your group
-
-Create a custom dashboard so you can monitor your group easily.
-
-In the left menu, click **Dashboards**, then click **+Create dashboard**.
-
-Name your dashboard.
-
-Click **+Add Widget** and select **Line** option in **Visualization**.
-
-In the **Metric** field, Uncheck the **Active**.
-
-Search **uptime** (compute.googleapis.com/instance/uptime) and click **VM Instance** > **Instance** > **Uptime**. Click **Apply**.
-
-Again click on **Apply**.
-
-### Task 6. Remove one instance to cause a problem
-
-In the console, select **Navigation menu** > **Compute Engine**.
-
-Check the box next to **instance2**, then click on the 3 vertical dots at the top of the page and click **Stop**. Click **Stop** again to turn off the machine.
-
-Wait a minute or 2 for the instance to stop and violate the uptime check you just set up. After a couple of minutes, turn your machine back on by clicking **Start/Resume**, then **Start**.
-
-Click **Navigation menu** > **Monitoring** > **Alerting** and refresh your browser. It may take a few more minutes to show that you have issues in the Summary section. Refresh until you see an Incident.
-
-> Optional: Using the left menu, look at **Dashboards** to view your custom dashboard. This provides details on both VMs. If you mouse over your chart, you can see which of your instances was stopped and restarted.
-
-#### Incidents
-
-When the alerting policy conditions are violated, an "incident" is created and displayed in the Incident section.
-
-Responders can acknowledge receipt of the notification and can close the incident when it has been taken care of.
-
-In the **Incidents** section, click on the name of the alerting policy that was violated to go into it.
-
-You've already **fixed** your problem by turning the VM back on, so the incident was cleared and you no longer see an incident in the Incidents section.
-
-To see the cleared incident, scroll down and click on the **Show closed incidents** link.
-
-Your incident should have a **Closed** status. You can read through the incident details.
-
-You can also click on the **Uptime Check Policy** link to explore the metrics it gives you.
-
-In several more minutes the Monitoring Overview page will all go back to green when the instance in Project 2 passes the Uptime Check.
-
-### (Optional) Remove your alerting policy
-
-If you set up an email alert as part of your alerting policy, there is a chance that you will receive a few emails about your resources even after the lab is completed.
-
-To avoid this, remove the alerting policy before you complete your lab.
-
-### Congratulations!
-
-Congratulations! 
-
-In this lab, you have monitored two Google Cloud projects in Cloud Monitoring, and responded to an incident with one of the instances in the Group. 
-
-You also created a custom dashboard to monitor your group easily.
+You learned how to use Google Cloud Billing reports and the cost breakdown report to gain visibility into your current and forecasted costs.

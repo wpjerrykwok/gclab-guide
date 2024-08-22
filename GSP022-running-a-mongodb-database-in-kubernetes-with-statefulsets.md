@@ -1,241 +1,535 @@
+# Running a MongoDB Database in Kubernetes with StatefulSets
+
+## GSP022
+
+## Overview
+
+Kubernetes is an open source container orchestration tool that handles the complexities of running containerized applications. 
+
+You can run Kubernetes applications with Kubernetes Engine—a Google Cloud computing service that offers many different customizations and integrations. 
+
+In this lab, you will get some practical experience with Kubernetes by learning how to set up a MongoDB database with a StatefulSet. 
+
+Running a stateful application (a database) on a stateless service (container) may sound contradictory. 
+
+However, after getting hands-on practice with this lab you will quickly see how that's not the case. 
+
+In fact, by using a few open-source tools you will see how Kubernetes and stateless services can go hand-in-hand.
+
+### What you'll learn
+
+In this lab, you will learn the following:
+
+- How to deploy a Kubernetes cluster, a headless service, and a StatefulSet.
+- How to connect a Kubernetes cluster to a MongoDB replica set.
+- How to scale MongoDB replica set instances up and down.
+- How to clean up your environment and shutdown the above services.
+
+### Prerequisites
+
+This is an advanced level lab. 
+
+Familiarity with Kubernetes or containerized applications is suggested. 
+
+Experience with the Google Cloud Shell/SDK and MongoDB is also recommended. 
+
+If you are looking to get up to speed in these services, be sure to check out the following labs:
+
+- Kubernetes Engine: Qwik Start
+- Managing Deployments Using Kubernetes Engine
+- Datastore: Qwik Start
+
+Once you're ready, scroll down to get your lab environment set up.
+
+## Task 1. Set a compute zone
+
+Throughout this lab, we will be using the gcloud command line tool to provision our services.
+
+Before we can create our Kubernetes cluster, we will need to set a compute zone so that the virtual machines in our cluster are all created in the same region. 
+
+We can do this using the `gcloud config set` command—run the following in your cloud shell to set your zone to `us-east4-c`:
+
+```bash
+gcloud config set compute/zone us-east4-c
+```
+
+> Note: Learn more about regions and zones from the Regions and zones guide.
+
+## Task 2. Create a new cluster
+
+Now that our zone is set, we will create a new cluster of containers.
+
+Run the following command to instantiate a cluster named `hello-world`:
+
+```bash
+gcloud container clusters create hello-world --num-nodes=2
+```
+
+This command creates a new cluster with two nodes, or virtual machines. 
+
+You can configure this command with additional flags to change the number of nodes, the default permissions, and other variables. 
+
+Learn more from the gcloud container clusters create reference.
+
+Launching the cluster may take a few minutes. Once it's up, you should receive a similar output:
+
+```bash
+NAME         Location       MATER_VERSION   MASTER_IP       ...
+hello-world  us-east4-c  1.9.7-gke.3     35.184.131.251  ...
+```
+
+## Task 3. Setting up
+
+Now that we have our cluster up and running, it's time to integrate it with MongoDB. 
+
+We will be using a replica set so that our data is highly available and redundant—a must for running production applications.
+
+To get set up, we need to do the following:
+
+- Download the MongoDB replica set/sidecar (or utility container in our cluster).
+- Instantiate a StorageClass.
+- Instantiate a headless service.
+- Instantiate a StatefulSet.
+
+Run the following command to clone the MongoDB/Kubernetes replica set from the Github repository:
+
+```bash
+gsutil -m cp -r gs://spls/gsp022/mongo-k8s-sidecar .
+```
+
+Once it's cloned, navigate to the `StatefulSet` directory with the following command:
+
+```bash
+cd ./mongo-k8s-sidecar/example/StatefulSet/
+```
+
+Once you have verified that the files have been downloaded and that you're in the right directory, let's go ahead and create a Kubernetes `StorageClass`.
+
+### Create the StorageClass
+
+A `StorageClass` tells Kubernetes what kind of storage you want to use for database nodes. 
+
+On the Google Cloud, you have a couple of storage choices: SSDs and hard disks.
+
+If you take a look inside the `StatefulSet` directory (you can do this by running the `ls` command), you will see SSD and HDD configuration files for both Azure and Google Cloud.
+
+Run the following command to take a look at the `googlecloud_ssd.yaml` file:
+
+```bash
+cat googlecloud_ssd.yaml
+```
+
+Output:
+
+```yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: fast
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+```
+
+This configuration creates a new StorageClass called "fast" that is backed by SSD volumes.
+
+Run the following command to deploy the StorageClass:
+
+```bash
+kubectl apply -f googlecloud_ssd.yaml
+```
+
+Now that our StorageClass is configured, our StatefulSet can now request a volume that will automatically be created.
+
+## Task 4. Deploying the Headless Service and StatefulSet
+
+### Find and inspect the files
+
+Before we dive into what headless service and StatefulSets are, let's open up the configuration file (`mongo-statefulset.yaml`) where they are both housed in:
+
+```bash
+nano mongo-statefulset.yaml
+```
+
+You should receive the following output (without the pointers to the Headless Service and StatefulSet content):
+
+```yaml
+apiVersion: v1   <-----------   Headless Service configuration
+kind: Service
+metadata:
+  name: mongo
+  labels:
+    name: mongo
+spec:
+  ports:
+  - port: 27017
+    targetPort: 27017
+  clusterIP: None
+  selector:
+    role: mongo
 ---
-title: "Walkthrough... Monitoring Multiple Projects with Cloud Monitoring (GSP090)"
-tags: [Google Cloud, how-to]
-style: border
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+apiVersion: apps/v1    <------- StatefulSet configuration
+kind: StatefulSet
+metadata:
+  name: mongo
+spec:
+  serviceName: "mongo"
+  replicas: 3
+  selector:
+    matchLabels:
+      role: mongo
+  template:
+    metadata:
+      labels:
+        role: mongo
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: mongo
+          image: mongo
+          command:
+            - mongod
+            - "--replSet"
+            - rs0
+            - "--smallfiles"
+            - "--noprealloc"
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-persistent-storage
+              mountPath: /data/db
+        - name: mongo-sidecar
+          image: cvallance/mongo-k8s-sidecar
+          env:
+            - name: MONGO_SIDECAR_POD_LABELS
+              value: "role=mongo,environment=test"
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-persistent-storage
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "fast"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 50Gi
+```
 
-# Monitoring Multiple Projects with Cloud Monitoring
+Remove the following flags from the file (lines 49 and 50):
 
-## GSP090
+```yaml
+- "--smallfiles"
+- "--noprealloc"
+```
 
-### Overview
+Ensure that this section of your file looks like the following:
 
-Cloud Monitoring provides dashboards and alerts so you can review performance metrics for cloud services, virtual machines, and common open source servers such as MongoDB, Apache, Nginx, Elasticsearch, and more. 
+```yaml
+containers:
+        - name: mongo
+          image: mongo
+          command:
+            - mongod
+            - "--replSet"
+            - rs0
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-persistent-storage
+              mountPath: /data/db
+```
 
-You configure Cloud Monitoring in the Console.
+Exit the nano editor with CTRL+X > Y > ENTER.
 
-In this hands-on lab you will have 2 projects to monitor in Cloud Monitoring. 
+#### Headless service: overview
 
-You'll add them both to a Cloud Monitoring account and monitor the metrics the virtual machines in the projects provide.
+The first section of `mongo-statefulset.yaml` refers to a `headless service`. 
 
-#### Objectives
+In Kubernetes terms, a service describes policies or rules for accessing specific pods. 
 
-In this lab, you will learn how to:
+In brief, a headless service is one that doesn't prescribe load balancing. 
 
-- Create a Cloud Monitoring account that has two Google Cloud projects.
+When combined with StatefulSets, this will give us individual DNSs to access our pods, and in turn a way to connect to all of our MongoDB nodes individually. 
 
-- Monitor across both projects from the single Cloud Monitoring account.
+In the `yaml` file, you can make sure that the service is headless by verifying that the `clusterIP` field is set to `None`.
 
-#### Setup for two projects
+#### StatefulSet: overview
 
-For this lab you are given two Project IDs. 
+The StatefulSet configuration is the second section of `mongo-statefulset.yaml`. 
 
-When you logged in, by default you logged in to Project 1. 
+This is the bread and butter of the application: it's the workload that runs MongoDB and what orchestrates your Kubernetes resources. 
 
-You'll need to keep track of your projects, and you can return to this page to remind yourself which is which. 
+Referencing the `yaml` file, we see that the first section describes the StatefulSet object. 
 
-The projects will change order, so knowing the last few digits of the name will help you identify them.
+Then, we move into the Metadata section, where labels and the number of replicas are specified.
 
-Project 1 already has a virtual machine (and you can look at it by going to **Compute Engine** > **VM instances**). 
+Next comes the pod spec. 
 
-You will create a virtual machine in Project 2, and then monitor both projects in Cloud Monitoring.
+The `terminationGracePeriodSeconds` is used to gracefully shutdown the pod when you scale down the number of replicas. 
 
-### Task 1. Create Project 2's virtual machine
+Then the configurations for the two containers are shown. 
 
-At the top of the screen, click on the dropdown arrow next to Project 1's name.
+The first one runs MongoDB with command line flags that configure the replica set name. 
 
-Make sure that you're on the **All** tab, then click on the name of **Project 2** to go into it.
+It also mounts the persistent storage volume to `/data/db`: the location where MongoDB saves its data. 
 
-Select **Navigation menu** > **Compute Engine** to open the VM instances window.
+The second container runs the sidecar. 
 
-Click **+Create instance** to create a new instance.
+This sidecar container will configure the MongoDB replica set automatically. 
 
-Name this instance **instance2**.
+As mentioned earlier, a "sidecar" is a helper container that helps the main container run its jobs and tasks.
 
-Select **Region** `us-west1` and **Zone** `us-west1-b`.
+Finally, there is the `volumeClaimTemplates`. 
 
-Leave all of the options at the default settings.
+This is what talks to the `StorageClass` we created before to provision the volume. 
 
-Click **Create**.
+It provisions a 100 GB disk for each MongoDB replica.
 
-Now you have resources to monitor in both of your projects.
+#### Deploy Headless Service and the StatefulSet
 
-> Note: Make sure that you are in Project 2 to proceed further in the lab.
+Now that we have a basic understanding of what a headless service and StatefulSet are, let's go ahead and deploy them.
 
-#### Create a Monitoring Metrics Scope
+Since the two are packaged in `mongo-statefulset.yaml`, we can run the following command to run both of them:
 
-Set up a Monitoring Metrics Scope that's tied to your Google Cloud Project. The following steps create a new account that has a free trial of Monitoring.
+```bash
+kubectl apply -f mongo-statefulset.yaml
+```
 
-In the Cloud Console, click **Navigation menu** > View All Products > **Monitoring**.
+You should receive the following output:
 
-When the Monitoring **Overview** page opens, your metrics scope project is ready.
+```bash
+service/mongo created
+statefulset.apps/mongo created
+```
 
-Now add both projects to Monitoring.
+## Task 5. Connect to the MongoDB Replica set
 
-In the left panel, click **Monitoring Settings** and then in the **Settings** window, click **+Add GCP PROJECTS** in the GCP Projects section.
+Now that we have a cluster running and our replica set deployed, let's go ahead and connect to it.
 
-Click **Select Projects**.
+### Wait for the MongoDB replica set to be fully deployed
 
-Check Project ID 1 and click **Select**.
+Kubernetes StatefulSets deploys each pod sequentially. 
 
-Click **Add projects**.
+It waits for the MongoDB replica set member to fully boot up and create the backing disk before starting the next member.
 
-### Task 2. Monitoring Overview
+Run the following command to view and confirm that all three members are up:
 
-Click on **Overview** in the left menu. 
+```bash
+kubectl get statefulset
+```
 
-You'll be adding a lot of good information here as the lab goes along. 
+Output - all three members are up:
 
-First, you'll create a Cloud Monitoring Group for visibility across both projects.
+```bash
+NAME    READY   AGE
+mongo   3/3     103s
+```
 
-#### About Cloud Monitoring groups
+### Initiating and Viewing the MongoDB replica set
 
-Cloud Monitoring lets you define and monitor groups of resources, such as VM instances, databases, and load balancers. 
+At this point, you should have three pods created in your cluster. These correspond to the three nodes in your MongoDB replica set.
 
-Groups can be based on names, tags, regions, applications, and other criteria. 
+Run this command to view:
 
-You can also create subgroups, up to six levels deep, within groups.
+```bash
+kubectl get pods
+```
 
-#### Create a Cloud Monitoring group
+Output:
 
-In the left menu, click **Groups**, then click **+Create group**.
+```bash
+NAME        READY     STATUS    RESTARTS   AGE
+mongo-0     2/2       Running   0          3m
+mongo-1     2/2       Running   0          3m
+mongo-2     2/2       Running   0          3m
+```
 
-Name your group `DemoGroup`.
+Wait for all three members to be created before moving on.
 
-The **Criteria** is a set of rules that will dynamically evaluate which resources should be part of this group.
+Connect to the first replica set member:
 
-Cloud Monitoring dynamically determines which resources belong to your group based on the filter criteria that you set up.
+```bash
+kubectl exec -ti mongo-0 -- mongosh
+```
 
-- In the first dropdown field (**Type**), **Name** is selected by default.
+You now have a `REPL` environment connected to the MongoDB.
 
-- In the second dropdown (**Operator**), **Contains** is selected by default.
+Let's instantiate the replica set with a default configuration by running the `rs.initiate()` command:
 
-- In the third field (**Value**), type in `instance` since both of the instance names in both of your projects start with the word `instance`.
+```bash
+rs.initiate()
+```
 
-Click **Done**, then click **Create**.
+Print the replica set configuration; run the `rs.conf()` command:
 
-### Task 3. Uptime check for your group
+```bash
+rs.conf()
+```
 
-Uptime checks let you quickly verify the health of any web page, instance, or group of resources. 
+This outputs the details for the current member of replica set `rs0`. 
 
-Each configured check is regularly contacted from a variety of locations around the world. 
+In this lab you see only one member. 
 
-Uptime checks can be used as conditions in alerting policy definitions.
+To get details of all members you need to expose the replica set through additional services like nodeport or load balancer.
 
-In the left menu, click **Uptime checks**, then click **+Create uptime check**.
+```bash
+rs0:OTHER> rs.conf()
+{
+        "_id" : "rs0",
+        "version" : 1,
+        "protocolVersion" : NumberLong(1),
+        "writeConcernMajorityJournalDefault" : true,
+        "members" : [
+                {
+                        "_id" : 0,
+                        "host" : "localhost:27017",
+                        "arbiterOnly" : false,
+                        "buildIndexes" : true,
+                        "hidden" : false,
+                        "priority" : 1,
+                        "tags" : {
+                        },
+                        "slaveDelay" : NumberLong(0),
+                        "votes" : 1
+                }
+        ],
+        "settings" : {
+                "chainingAllowed" : true,
+                "heartbeatIntervalMillis" : 2000,
+                "heartbeatTimeoutSecs" : 10,
+                "electionTimeoutMillis" : 10000,
+                "catchUpTimeoutMillis" : -1,
+                "catchUpTakeoverDelayMillis" : 30000,
+                "getLastErrorModes" : {
+                },
+                "getLastErrorDefaults" : {
+                        "w" : 1,
+                        "wtimeout" : 0
+                },
+                "replicaSetId" : ObjectId("5c526b6501fa2d29fc65c48c")
+        }
+}
+```
 
-Create your uptime check with the following information:
+Type "exit" and press enter to quit the `REPL`.
 
-- **Protocol**: `TCP`
+## Task 6. Scaling the MongoDB replica set
 
-- **Resource Type**: `Instance`
+A big advantage of Kubernetes and StatefulSets is that you can scale the number of MongoDB Replicas up and down with a single command!
 
-- **Applies To**: `Group`, and then select `DemoGroup`.
+To scale up the number of replica set members from 3 to 5, run this command:
 
-- **Port**: `22`
+```bash
+kubectl scale --replicas=5 statefulset mongo
+```
 
-- **Check frequency**: `1 minute`, then click **Continue**.
+In a few minutes, there will be 5 MongoDB pods.
 
-Click **Continue** again.
+Run this command to view them:
 
-Leave the slider **ON** state for **Create an alert** option in **Alert & notification** section, then click **Continue**.
+```bash
+kubectl get pods
+```
 
-For **Title**: enter `DemoGroup uptime check`.
+Your output should look like this:
 
-Click **TEST** to verify that your uptime check can connect to the resource.
+```bash
+NAME      READY     STATUS    RESTARTS   AGE
+mongo-0   2/2       Running   0          41m
+mongo-1   2/2       Running   0          39m
+mongo-2   2/2       Running   0          37m
+mongo-3   2/2       Running   0          4m
+mongo-4   2/2       Running   0          2m
+```
 
-When you see a green check mark everything can connect, click **Create**.
+To scale down the number of replica set members from 5 back to 3, run this command:
 
-### Task 4. Alerting policy for the group
+```bash
+kubectl scale --replicas=3 statefulset mongo
+```
 
-Use Cloud Monitoring to create one or more alerting policies.
+In a few seconds, there are 3 MongoDB pods.
 
-In the left menu, click **Uptime checks**.
+Run this command to view:
 
-Click the three dots at the far right of your Display Name and click **Add alert policy**.
+```bash
+kubectl get pods
+```
 
-Click **+Add alert condition**.
+Your output should look like this:
 
-Select the previously created **Uptime health check on DemoGroup** condition from the left section and click **Delete alert condition**.
+```bash
+NAME      READY     STATUS    RESTARTS   AGE
+mongo-0   2/2       Running   0          41m
+mongo-1   2/2       Running   0          39m
+mongo-2   2/2       Running   0          37m
+```
 
-In your **New condition**, click **Select a metric**.
+## Task 7. Using the MongoDB replica set
 
-Uncheck the **Active**.
+Each pod in a StatefulSet backed by a Headless Service will have a stable DNS name. 
 
-In the **Select a metric** field, search `check_passed` and click **VM Instance** > **Uptime_check** > **Check passed**. Click **Apply**.
+The template follows this format: `<pod-name>.<service-name>`
 
-Click **Add a filter**, set the **Filter** to `check_id` and select `demogroup-uptime-check-id` as the **Value**. Click **Done**.
+This means the DNS names for the MongoDB replica set are:
 
-> Note: If `demogroup-uptime-check-id` check_id is unavailable, please wait for a few seconds and try.
+```bash
+mongo-0.mongo
+mongo-1.mongo
+mongo-2.mongo
+```
 
-In left panel, click on the arrow button next to **VM Instance-Check passed**, then click on **Configure trigger**.
+You can use these names directly in the connection string URI of your app.
 
-Select **Metric absence** as Condition type and click **Next**.
+Using a database is outside the scope of this lab, however for this case, the connection string URI would be:
 
-Turn off **Configure notifications**.
+```bash
+"mongodb://mongo-0.mongo,mongo-1.mongo,mongo-2.mongo:27017/dbname_?"
+```
 
-In the **Alert policy name** field, enter the **Name** as `Uptime Check Policy`. Click **Next**.
+## Task 8. Clean up
 
-Click **Create policy**.
+Because you are working in a lab environment, when you end the lab all your resources and your project will be cleaned up and discarded on your behalf. 
 
-### Task 5. Custom dashboard for your group
+But we want to show you how to clean up resources yourself to save on cost and to be a good cloud citizen when you are in your own environment.
 
-Create a custom dashboard so you can monitor your group easily.
+To clean up the deployed resources, run the following commands to delete the StatefulSet, Headless Service, and the provisioned volumes.
 
-In the left menu, click **Dashboards**, then click **+Create dashboard**.
+Delete the StatefulSet:
 
-Name your dashboard.
+```bash
+kubectl delete statefulset mongo
+```
 
-Click **+Add Widget** and select **Line** option in **Visualization**.
+Delete the service:
 
-In the **Metric** field, Uncheck the **Active**.
+```bash
+kubectl delete svc mongo
+```
 
-Search **uptime** (compute.googleapis.com/instance/uptime) and click **VM Instance** > **Instance** > **Uptime**. Click **Apply**.
+Delete the volumes:
 
-Again click on **Apply**.
+```bash
+kubectl delete pvc -l role=mongo
+```
 
-### Task 6. Remove one instance to cause a problem
+Finally, you can delete the test cluster:
 
-In the console, select **Navigation menu** > **Compute Engine**.
+```bash
+gcloud container clusters delete "hello-world"
+```
 
-Check the box next to **instance2**, then click on the 3 vertical dots at the top of the page and click **Stop**. Click **Stop** again to turn off the machine.
+Press **Y** then **Enter** to continue deleting the test cluster.
 
-Wait a minute or 2 for the instance to stop and violate the uptime check you just set up. After a couple of minutes, turn your machine back on by clicking **Start/Resume**, then **Start**.
+## Congratulations
 
-Click **Navigation menu** > **Monitoring** > **Alerting** and refresh your browser. It may take a few more minutes to show that you have issues in the Summary section. Refresh until you see an Incident.
+Kubernetes Engine provides a powerful and flexible way to run containers on Google Cloud. 
 
-> Optional: Using the left menu, look at **Dashboards** to view your custom dashboard. This provides details on both VMs. If you mouse over your chart, you can see which of your instances was stopped and restarted.
+StatefulSets let you run stateful workloads like databases on Kubernetes. 
 
-#### Incidents
+You learned about:
 
-When the alerting policy conditions are violated, an "incident" is created and displayed in the Incident section.
-
-Responders can acknowledge receipt of the notification and can close the incident when it has been taken care of.
-
-In the **Incidents** section, click on the name of the alerting policy that was violated to go into it.
-
-You've already **fixed** your problem by turning the VM back on, so the incident was cleared and you no longer see an incident in the Incidents section.
-
-To see the cleared incident, scroll down and click on the **Show closed incidents** link.
-
-Your incident should have a **Closed** status. You can read through the incident details.
-
-You can also click on the **Uptime Check Policy** link to explore the metrics it gives you.
-
-In several more minutes the Monitoring Overview page will all go back to green when the instance in Project 2 passes the Uptime Check.
-
-### (Optional) Remove your alerting policy
-
-If you set up an email alert as part of your alerting policy, there is a chance that you will receive a few emails about your resources even after the lab is completed.
-
-To avoid this, remove the alerting policy before you complete your lab.
-
-### Congratulations!
-
-Congratulations! 
-
-In this lab, you have monitored two Google Cloud projects in Cloud Monitoring, and responded to an incident with one of the instances in the Group. 
-
-You also created a custom dashboard to monitor your group easily.
+- Creating a MongoDB replica set with Kubernetes StatefulSets
+- Connecting to the MongoDB replica set
+- Scaling the replica set

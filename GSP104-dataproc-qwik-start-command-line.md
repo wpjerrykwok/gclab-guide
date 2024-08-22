@@ -1,4 +1,10 @@
-Dataproc: Qwik Start - Command Line GSP104 Overview Dataproc is a fast, easy-to-use, fully-managed cloud service for running Apache Spark and Apache Hadoop clusters in a simpler, more cost-efficient way. Operations that used to take hours or days take seconds or minutes instead. Create Dataproc clusters quickly and resize them at any time, so you don't have to worry about your data pipelines outgrowing your clusters.
+# Dataproc: Qwik Start - Command Line
+
+## GSP104
+
+### Overview
+
+ Dataproc is a fast, easy-to-use, fully-managed cloud service for running Apache Spark and Apache Hadoop clusters in a simpler, more cost-efficient way. Operations that used to take hours or days take seconds or minutes instead. Create Dataproc clusters quickly and resize them at any time, so you don't have to worry about your data pipelines outgrowing your clusters.
 
 This lab shows you how to use the command line to create a Dataproc cluster, run a simple Apache Spark job in the cluster, and then modify the number of workers in the cluster.
 

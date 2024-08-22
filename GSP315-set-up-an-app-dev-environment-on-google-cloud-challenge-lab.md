@@ -4,63 +4,67 @@
 
 ### Introduction
 
-In a challenge lab you’re given a scenario and a set of tasks. Instead of following step-by-step instructions, you will use the skills learned from the labs in the course to figure out how to complete the tasks on your own! An automated scoring system (shown on this page) will provide feedback on whether you have completed your tasks correctly.
+In a challenge lab you’re given a scenario and a set of tasks. 
 
-When you take a challenge lab, you will not be taught new Google Cloud concepts. You are expected to extend your learned skills, like changing default values and reading and researching error messages to fix your own mistakes.
+Instead of following step-by-step instructions, you will use the skills learned from the labs in the course to figure out how to complete the tasks on your own! 
 
-To score 100% you must successfully complete all tasks within the time period!
+### Challenge scenario
 
-This lab is recommended for students who have enrolled in the Set Up an App Dev Environment on Google Cloud skill badge. Are you ready for the challenge?
+You are just starting your junior cloud engineer role with Jooli inc. 
 
-Setup
-Before you click the Start Lab button
-Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click Start Lab, shows how long Google Cloud resources will be made available to you.
-
-This hands-on lab lets you do the lab activities yourself in a real cloud environment, not in a simulation or demo environment. It does so by giving you new, temporary credentials that you use to sign in and access Google Cloud for the duration of the lab.
-
-To complete this lab, you need:
-
-Access to a standard internet browser (Chrome browser recommended).
-Note: Use an Incognito or private browser window to run this lab. This prevents any conflicts between your personal account and the Student account, which may cause extra charges incurred to your personal account.
-Time to complete the lab---remember, once you start, you cannot pause a lab.
-Note: If you already have your own personal Google Cloud account or project, do not use it for this lab to avoid extra charges to your account.
-Challenge scenario
-You are just starting your junior cloud engineer role with Jooli inc. So far you have been helping teams create and manage Google Cloud resources.
+So far you have been helping teams create and manage Google Cloud resources.
 
 You are expected to have the skills and knowledge for these tasks, so don’t expect step-by-step guides.
 
-Your challenge
-You are asked to help a newly formed development team with some of their initial work on a new project around storing and organizing photographs, called Memories. You have been asked to assist the Memories team with initial configuration for their application development environment.
+#### Your challenge
+
+You are asked to help a newly formed development team with some of their initial work on a new project around storing and organizing photographs, called *Memories*.
+
+You have been asked to assist the Memories team with initial configuration for their application development environment.
 
 You receive the following request to complete the following tasks:
 
-Create a bucket for storing the photographs.
-Create a Pub/Sub topic that will be used by a Cloud Function you create.
-Create a Cloud Function.
-Remove the previous cloud engineer’s access from the memories project.
+- Create a bucket for storing the photographs.
+
+- Create a Pub/Sub topic that will be used by a Cloud Function you create.
+
+- Create a Cloud Function.
+
+- Remove the previous cloud engineer’s access from the memories project.
+
 Some Jooli Inc. standards you should follow:
 
-Create all resources in the us-west1 region and us-west1-c zone, unless otherwise directed.
-Use the project VPCs.
-Naming is normally team-resource, e.g. an instance could be named kraken-webserver1
-Allocate cost effective resource sizes. Projects are monitored and excessive resource use will result in the containing project's termination (and possibly yours), so beware. This is the guidance the monitoring team is willing to share; unless directed, use e2-micro for small Linux VMs and e2-medium for Windows or other applications such as Kubernetes nodes.
+- Create all resources in the `us-west1` region and `us-west1-c` zone, unless otherwise directed.
+
+- Use the project VPCs.
+
+- Naming is normally *team-resource*, e.g. an instance could be named **kraken-webserver1**
+
+- Allocate cost effective resource sizes. Projects are monitored and excessive resource use will result in the containing project's termination (and possibly yours), so beware. This is the guidance the monitoring team is willing to share; unless directed, use **e2-micro** for small Linux VMs and **e2-medium** for Windows or other applications such as Kubernetes nodes.
+
 Each task is described in detail below, good luck!
 
 ### Task 1. Create a bucket
 
-You need to create a bucket called qwiklabs-gcp-02-0f0cd48efcc6-bucket for the storage of the photographs. Ensure the resource is created in the us-west1 region and us-west1-c zone.
+You need to create a bucket called `qwiklabs-gcp-02-0f0cd48efcc6-bucket` for the storage of the photographs. 
+
+Ensure the resource is created in the `us-west1` region and `us-west1-c` zone.
 
 ### Task 2. Create a Pub/Sub topic
 
-Create a Pub/Sub topic called topic-memories-350 for the Cloud Function to send messages.
+Create a Pub/Sub topic called `topic-memories-350` for the Cloud Function to send messages.
 
 ### Task 3. Create the thumbnail Cloud Function
 
-Create a Cloud Function memories-thumbnail-maker that will to create a thumbnail from an image added to the qwiklabs-gcp-02-0f0cd48efcc6-bucket bucket. Ensure the Cloud Function is using the 2nd Generation environment. Ensure the resource is created in the us-west1 region and us-west1-c zone.
+Create a Cloud Function `memories-thumbnail-maker` that will to create a thumbnail from an image added to the `qwiklabs-gcp-02-0f0cd48efcc6-bucket` bucket. 
 
-Create a Cloud Function called memories-thumbnail-maker
-Note: The Cloud Function is required to executes every time an object is created in the bucket created in Task 1. During the process Cloud Function may request permission to enable APIs. Please enable each of the required APIs as requested.
-Make sure you set the Entry point (Function to execute) to memories-thumbnail-maker and Trigger to Cloud Storage.
+Ensure the Cloud Function is using the 2nd Generation environment. Ensure the resource is created in the `us-west1` region and `us-west1-c` zone.
+
+Create a Cloud Function called `memories-thumbnail-maker`
+
+> Note: The Cloud Function is required to executes every time an object is created in the bucket created in Task 1. During the process Cloud Function may request permission to enable APIs. Please enable each of the required APIs as requested.
+
+Make sure you set the **Entry point** (Function to execute) to `memories-thumbnail-maker` and **Trigger** to `Cloud Storage`.
 
 Add the following code to the `index.js`:
 
@@ -161,23 +165,26 @@ Add the following code to the `package.json`:
 
 Verify the thumbnail was successfully created.
 
-Note: If you get a permission denied error stating it may take a few minutes before all necessary permissions are propagated to the Service Agent, wait a few minutes and try again. Ensure you have the relevant roles (Eventarc Service Agent, Eventarc Event Receiver, Service Account Token Creator, and Pub/Sub Publisher) assigned to the correct service accounts.
+> Note: If you get a permission denied error stating it may take a few minutes before all necessary permissions are propagated to the Service Agent, wait a few minutes and try again. Ensure you have the relevant roles (Eventarc Service Agent, Eventarc Event Receiver, Service Account Token Creator, and Pub/Sub Publisher) assigned to the correct service accounts.
 
 ### Task 4. Test the Infrastructure
 
 You must upload one JPG or PNG image into the bucket
 
-Upload a PNG or JPG image to qwiklabs-gcp-02-0f0cd48efcc6-bucket bucket.
+Upload a PNG or JPG image to `qwiklabs-gcp-02-0f0cd48efcc6-bucket` bucket.
 
-Note: Alternatively Download this image https://storage.googleapis.com/cloud-training/gsp315/map.jpg to your machine. Then upload it to the bucket.
-You will see a thumbnail image appear shortly afterwards (use REFRESH in the bucket details).
+> Note: Alternatively Download this image https://storage.googleapis.com/cloud-training/gsp315/map.jpg to your machine. Then upload it to the bucket.
+
+You will see a thumbnail image appear shortly afterwards (use **REFRESH** in the bucket details).
 
 ### Task 5. Remove the previous cloud engineer
 
 You will see that there are two users defined in the project.
 
-One is your account (student-02-2cfca698708b@qwiklabs.net with the role of Owner).
-The other is the previous cloud engineer (student-04-c5603b941e33@qwiklabs.net with the role of Viewer).
+One is your account (`student-02-2cfca698708b@qwiklabs.net` with the role of Owner).
+
+The other is the previous cloud engineer (`student-04-c5603b941e33@qwiklabs.net` with the role of Viewer).
+
 Remove the previous cloud engineer’s access from the project.
 
-Congratulations!
+### Congratulations

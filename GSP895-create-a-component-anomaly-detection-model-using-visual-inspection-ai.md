@@ -1,273 +1,524 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+# Create a Component Anomaly Detection Model using Visual Inspection AI
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
-
-## GSP087
+## GSP895
 
 ### Overview
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Visual Inspection AI Assembly Inspection inspects products when components come together during some designated stage of assembling a product. 
 
-#### Application architecture
+For such inspections, Visual Inspection AI can help you to ensure that components are in the correct location within the overall object, and that each component is not damaged or defective.
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+PCBs (printed circuit boards) in general are assemblies of components, including through-hole and surface-mounted. 
 
-The script reports a numeric value to a Cloud monitoring metric.
+Components can be discrete parts placed within the assembly or physical features created within the assembly such as solder joints, glue, or welds. 
 
-You do not need to know Node.js or JavaScript for this lab.
+For subassemblies of electronic products, components can be screws, other hardware parts, or whole other subassemblies.
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+In this lab you will use Visual Inspection AI to prepare a component anomaly detection dataset and then create and train a component anomaly detection model.
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+Model training can take a long time so this lab is paired with Deploy and Test a Visual Inspection AI Component Anomaly Detection Solution where you deploy a Visual Inspection solution artifact from this lab and then use that artifact to generate inferences about sample images.
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+### Objectives
 
-The application includes the following components:
+In this lab you will learn how to complete the following tasks:
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+- Identify and detect components.
+- Apply alignment and detection of components.
+- Train a Visual Inspection Assembly Inspection detection model.
+- Review the process involved in evaluation of trained Assembly Inspection anomaly detection models.
+- Review the process of creating a trained Assembly Inspection anomaly detection solution artifact.
+- Review the process of performing batch prediction using an Assembly Inspection anomaly detection solution artifact.
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+### Task 1. Identify and detect components
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+In this task you create a dataset, upload sample images, and select a template image. 
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
+On the template you will define inclusion and exclusion areas as well as components, then run the alignment task, which will identify the candidate components in each submitted image.
 
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
+The Assembly Inspection objective is designed for inspecting assemblages of parts. 
 
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
+For each part, typically, you need to test that the part:
 
-#### Objectives
+- Is correctly placed in its expected final location, and
+- It itself is not anomalous or has not been damaged during placement.
 
-In this lab, you will learn how to perform the following tasks:
+In order to define and build an Assembly Inspection objective via the Visual Inspection AI user interface, you need to upload a collection of training images, then define the following through the console:
 
-- Deploy an autoscaling Compute Engine instance group.
+- A template image with bounding box annotations defining where on the template image to find each component, and a string id for each spatial region of each component. 
 
-- Create a custom metric used to scale the instance group.
+  - Note that a component, such as a screw component, can have multiple regions assigned to it in the case where a component appears in multiple locations.
 
-- Use the Cloud Console to visualize the custom metric and instance group size.
+- A set of training images. 
 
-### Task 1. Creating the application
+  - The Assembly Inspection objective expects most such images to be normal, that is, free of defects. 
+  - It is, however, possible to specify the NORMAL or ABNORMAL label for a component region in an image when it is known. 
+  - Since there are many different components in the typical Assembly Inspection image, it is required to specify which region a label applies to - which region illustrates a defective ABNORMAL or non-defective NORMAL example.
 
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
+#### Create a dataset
 
-#### Uploading the script files to Cloud Storage
+First, create a Dataset.
 
-During autoscaling, the instance group will need to create new Compute Engine instances.
+In the **Navigation Menu**, click **Visual Inspection AI** to open the Visual Inspection console.
 
-When it does, it creates the instances based on an instance template.
+Click the **Enable Visual Inspection AI API** button.
 
-Each instance needs a startup script.
+Click **Create a Dataset**.
 
-Therefore, the template needs a way to reference the startup script.
+On the **Create Dataset** page:
 
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
+- For **Dataset name** enter `pcb_component`
+- For **Objective** select `Assembly Inspection`.
 
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
+Click **Create**.
 
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
+Dataset creation will take a minute or two to complete.
 
-### Task 2. Create a bucket
+#### Import training images into the dataset
 
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
+Now you need to import the training images into the Dataset. 
 
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
+You can use the Google Visual Inspection demo dataset. 
 
-Accept the default values then click **Create**.
+This dataset consists of images of PCB which may be in different locations and orientations. 
 
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
+The left image below shows a **normal** PCB and the right image shows an example of a **defect** over the component labeled **R1** (see blue rectangle near the bottom center of the PCB).
 
-When the bucket is created, the **Bucket details** page opens.
+In order to use the demo dataset, you must copy the images to your own Cloud Storage bucket.
 
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
+In **Cloud Shell**, run the commands below to copy images to your Cloud Storage bucket:
 
 ```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
+export PROJECT_ID=$(gcloud config get-value core/project)
+gsutil mb gs://${PROJECT_ID}
+gsutil -m cp gs://cloud-training/gsp895/pcb_images/*.png \
+gs://${PROJECT_ID}/demo_pcb_images/
 ```
 
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
+Copying will take a few minutes.
 
-#### Understanding the code components
+Create a CSV import file using the following commands:
 
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
-
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
-
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
-
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
-
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
-
-### Task 3. Creating an instance template
-
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
-
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
-
-Click **Create Instance Template** at the top of the page.
-
-Name the instance template `autoscaling-instance01`.
-
-Set **Location** as **Global**.
-
-Scroll down, click **Advanced options**.
-
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
-
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
-
-Click **Create**.
-
-### Task 4. Creating the instance group
-
-In the left pane, click **Instance groups**.
-
-Click **Create instance group** at the top of the page.
-
-**Name**: `autoscaling-instance-group-1`.
-
-For **Instance template**, select the instance template you just created.
-
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
-
-Set **Autoscaling mode** to **Off: do not autoscale**.
-
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
-
-Click **Create**.
-
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
-
-### Task 5. Verifying that the instance group has been created
-
-Wait to see the green check mark next to the new instance group you just created.
-
-It might take the startup script several minutes to complete installation and begin reporting values.
-
-Click Refresh if it seems to be taking more than a few minutes.
-
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
-
-### Task 6. Verifying that the Node.js script is running
-
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
-
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
-
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
-
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
-
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
-
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
-
-Add `"nodeapp"` as line 3, so the code looks similar to this:
-
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
+```bash
+gsutil ls gs://${PROJECT_ID}/demo_pcb_images/*.png > /tmp/demo_pcb_images.csv
+gsutil cp /tmp/demo_pcb_images.csv gs://${PROJECT_ID}/demo_pcb_images.csv
 ```
 
-Click **Run query**.
+Back in the **Visual Inspection AI console**, on the **Import** tab, to **Select an import file from Cloud Storage**, click **Browse**.
 
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
+Expand the bucket with a name that matches the lab Project ID.
 
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
+Select the `demo_pcb_image.csv` import file.
 
-### Task 7. Configure autoscaling for the instance groups
+Click **Select**.
 
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
+Click **Continue**. A status bar will appear to indicate **Import in progress**.
 
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
+The import will take a few minutes to complete. 
 
-Click the `autoscaling-instance-group-1` group.
+Once the import is completed, you will see the imported images displayed in the **Visual Inspection AI** user interface as shown below:
 
-Click **Edit**.
+Now that you are able to see the list of imported images, you can browse through them and click any of the images to have a close-up view as you explore your dataset.
 
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
+#### Configure a template
 
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
+Next, configure a template. 
 
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
+To build your Assembly Inspection objective, you will need the following definitions:
 
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
+- Individual components of a to-be-inspected image need to be clearly defined on one template image.
 
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
+- All the individual components from all images localized by the Visual Inspection AI’s algorithms based on the component definition in the template image.
 
-- Click **Apply**.
+To define an Assembly Inspection objective, you will need to:
 
-- **Utilization target**: `150`
+- Select one image as the template image from the list of imported images for training.
 
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
+- Define the inspection areas inside the template image, where the subsequent inspection algorithm processes will be applied.
 
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
+- Define individual components with a unique component name and their corresponding spatial locations (or Bounding Box) in the template image.
 
-- **Utilization target type**: `Gauge`. Click **Select**.
+  - Select the **Components** tab in the **Visual Inspection AI** UI.
 
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
+  - Select one image as the template image by clicking on the image and entering into the zoomed in view.
 
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
+  - Toggle the **Use as template** button as shown below.
+
+Once the template image is defined, you need to specify an inspection area within the template image where all components to be inspected by the automated algorithm reside. 
+
+The purpose of defining the inspection area via bounding box regions is to allow the Visual Inspection AI's algorithms to focus only on modeling the pixels that are relevant (**Included**) and ignore any pixels that are irrelevant (**Excluded**), such as background pixels.
+
+The following figures show the process of defining the inspection area which has one **Included** bounding box area and one **Excluded** bounding box area.
+
+Click the back arrow to return to the **Components** tab. You will see that the image you selected as the template is now highlighted.
+
+Click the `template image` to enable selection of inspection areas.
+
+Click the **Add bounding box** tool from the toolbar and draw a region. When releasing the mouse cursor a popup will allow you to select whether this is an inspection area to include or exclude.
+
+A popup menu displays the highlighted option: Inspection Are: Included
 
 Click **Save**.
 
-### Task 8. Watching the instance group perform autoscaling
+#### Detect and crop components via alignment
 
-The Node.js script varies the custom metric values it reports from each instance over time.
+Once the inspection area is defined, you need to define individual components on the template image for the subsequent component modeling.
 
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
+You should train Anomaly Detection models for inspecting **Resistance** components.
 
-If the value goes down, the instance group detects this and scales down by removing instances.
+You will need to add **Resistance** components as below:
 
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
+In the **Components** tab, click **Add New Component**.
 
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
+For new component name, enter `Resistance`
 
-- In the left pane, click **Instance groups**.
+Click **Done**.
 
-- Click the `builtin-igm` instance group in the list.
+Once the component labels are added, you need to associate a concrete component label with a spatial location region within the template image, so that the corresponding image region of the component can be subsequently used for the model training:
 
-- Click the **Monitoring** tab.
+Click the **Template image** for a close-up view.
 
-- Enable **Auto Refresh**.
+Click the **Add bounding box** tool from the tool bar.
 
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
+Draw a region for one **Resistance** component.
 
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
+Select the corresponding component label for the selected region, that is **Resistance** in the popup menu that appears after releasing the mouse cursor.
 
-Hover your mouse over the graphs to see more details.
+> Note: You will see Inclusion and Exclusion Inspection Area labels as well as component labels in the popup menu.
 
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
+Repeat the previous step to select another **Resistance** component.
 
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
+Click **Save** to confirm the component regions.
 
-### Task 9. Autoscaling example
+After defining the template image, inspection areas, and components (labels and regions) on the template image, you can review the detected and cropped component region images.
 
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
+On the **Components** tab, on the bottom right, click the **Detect Components** button.
 
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
+> Note: In the example image below, you will see that there is also a Soldering Component. You do not need to create this component, but you should be aware that model training is per component, and typically you would have more than a single component type. For the purposes of this lab, we will use only the Resistance component type.
 
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
+> Note: The **Detect Components** task that aligns the images and identifies the components will take about 15-20 minutes to complete.
 
-While your autoscaling starts up, read through this graph to understand what will be happening.
+### Task 2. Apply alignment and detection of components
 
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
+In this task you will apply your component selection to the images to align and detect all components.
+
+When the alignment process is complete, the candidate components are identified and displayed in the user interface. You will now review the output from the component detection and alignment step.
+
+Click the **Next** button to review the samples. 
+
+A detailed view of the detected and cropped components region images will be displayed, all the **Resistance** component regions from all images have been detected and cropped.
+
+If you are satisfied with the preview results of detected and cropped component regions, you can move to the next steps.
+
+Click the **Apply to all** status icon on the right side of the user interface panel, and then click the **Apply** button to formally apply the detection and cropping processes to all images. 
+
+This will trigger another long running task and the **Apply to all** task status icon on the right side of the user interface panel indicates that the process is running.
+
+> Note: The Apply to all task will take about 15-20 minutes to complete. You do not need to wait for this step to finish.
+
+Once the **Apply to all** task is completed, the **Visual Inspection AI** user interface will move to the **Finish** stage. 
+
+This indicates that Visual Inspection is ready to use the detected and cropped component region images to train Visual Inspection AI Anomaly Detection models.
+
+You have now completed the steps required to prepare for final model training. 
+
+The training process will also take some time, well over an hour for this demo dataset. 
+
+For this reason the rest of this lab provides an overview of the remaining steps involved in evaluating and refining a model and creating the solution artifact that can then be used to analyze images. 
+
+In the follow up lab to this one, **Deploying and Testing a Visual Inspection AI Component Anomaly Detection Solution**, you learn how to deploy and use this solution artifact to analyze images.
+
+If you were training your own model you would click the button to start training at this point, but you should not do that for this lab.
+
+> Note: The remaining sections of this lab are for information only, they are not steps that you should carry out in this lab session.
+
+### Overview 1. Training and refining an anomaly detection model
+
+This section provides an overview of the procedures involved in training the component-based Anomaly Detection model. 
+
+The cropped component images under each defined component initially do not have the ground-truth labels associated with them, however the Anomaly Detection model training in **Visual Inspection AI** allows you to kick off model training immediately without the need to provide any labels to the cropped component images. 
+
+You can add the labels later and retrain the model to improve its accuracy.
+
+The detailed detected and cropped view of each component can be viewed in the **Components** tab, under the component label **Resistance**.
+
+To start the Anomaly Detection model training for the **Resistance** component, the **Start Training** option becomes available once component detection and alignment has completed. 
+
+You might have to refresh your browser before the **Start Training** button appears. This button will disappear when training is being carried out and reappears again once it is complete.
+
+Once the model training is started, the **Train model task** status icon is shown on the right side of the Visual Inspection user interface panel, indicating whether the training task is still in progress.
+
+> Note: For the demo dataset this first round of training your model would take about 50-60 minutes to complete.
+
+Once model training has completed the **Start Training** button will be available again on the right panel, indicating that you can start a new round of training at any time.
+
+Once a model has been trained the **Go to evaluation review page** button is also available on the right hand panel, allowing you to quickly navigate to the model evaluation page, which will be explored in more detail in the next section.
+
+Clicking **Suggested to label** under **Resistance** switches to component images used during training that Visual Inspection AI has identified as the most useful for manual labeling.
+
+For each of the component images, there will be a **Model defect score** associated with it. 
+
+This score indicates how likely the trained model believes that this component image is defective. 
+
+The higher the score, the more defective the model believes the component image to be. 
+
+The value range of the **Model defect score** is from zero to one.
+
+The images surrounded by the **Suggested to label** boxes are the images that the Visual Inspection AI system believes are most likely to need attention and verification, that is human labeling. 
+
+If you follow these **Suggested to label** images, and verify them as either **NORMAL** or **ABNORMAL**, the human labeling information you provide on these images allows the Visual Inspection AI system to train a better Anomaly Detection model for the labeled component in subsequent rounds of Anomaly Detection model training.
+
+Some of the images in the demo dataset are deliberately masked to trigger defect detection using a blue rectangular mask and are used in this demo to make it easy to identify abnormal components.
+
+Labeling normal and abnormal components manually following a round of training helps to improve the accuracy of the model.
+
+The images on the first page of **Selected to label** that contain a blue rectangle masking the resistor can be labeled as **ABNORMAL** by clicking the **Label as abnormal** option that appears in the pop-up above the images. These abnormal images are then highlighted in red.
+
+Any remaining unassigned images on the first page of the **Selected to label** can then be labeled as **NORMAL** by clicking the **Label as normal** option that appears in the pop-up above the images. 
+
+These normal images are then highlighted in green.
+
+There are also two tabs, **Unlabeled** and **Labeled**, on the left panel that allow you to easily navigate through all the component images that you have already labeled under the **Labeled** tab, and the images you have not labeled yet under the **Unlabeled** tab.
+
+Once **NORMAL** or **ABNORMAL** labels have been selected you can trigger a new round of Anomaly Detection model training to use these manually labeled components to improve the model.
+
+Clicking on the **Start Training** button on the right side of the Visual Inspection AI user interface panel, will start another round of training.
+
+> Note: For the demo dataset this second round of training your model would take about 50-60 minutes to complete.
+
+Once the component detection model is fully trained, inspecting the model's quality as well as exporting your trained Assembly Inspection solution artifact in the format of a docker image can be done through the **Model** page. 
+
+The solution artifact Docker image can then be used to run batch predictions in the Cloud or you run the Docker container in an on-premises configuration.
+
+### Overview 2. Evaluating a trained Assembly Inspection model
+
+This section demonstrates how to access and interpret the model evaluation user interface for a trained model.
+
+Once the component's **Anomaly Detection model** has been trained, the trained model's performance can be checked from the Model page. 
+
+There are two ways to navigate to the model evaluation page.
+
+In the Anomaly Detection training page of the **Resistance** component, once model training is completed, there will be a **Go to evaluation review page** link showing up on the right panel as shown below:
+
+The **Model** page icon on the left panel as shown below can be used to navigate to the model evaluation page:
+
+Expanding the **Dataset** shows individually trained component Anomaly Detection models, in this case the model is **Resistance**.
+
+Clicking on the **Resistance** model, shows the detailed model evaluation page and results. 
+
+The model evaluation detailed user interface page shows the **Precision** and **Recall** model evaluation metrics for the trained components Anomaly Detection models.
+
+The Evaluation page displaying Resistance details
+
+In the Visual Inspection AI Evaluation page, Positive data refers to images classified as defective, and Negative data refers to images classified as non-defective. 
+
+This means:
+
+- **True Positive (TP)** is a defective image being correctly classified as defective.
+
+- **False Positive (FP)** is a non-defective image being wrongly classified as defective.
+
+- **True Negative (TN)** is a non-defective image being correctly classified as non-defective.
+
+- **False Negative (FN)** is a defective image being wrongly classified as non-defective.
+
+The model evaluation metrics **Precision** and **Recall** are mathematically defined as follows:
+
+- Precision: TP / (TP + FP)
+
+- Recall: TP / (TP + FN)
+
+The model evaluation page allows to modify the confidence threshold to evaluate the model using the **Confidence threshold** slider at the top of the page.
+
+The page shows the **confusion matrix** calculated based on the component images ground-truth labels **NORMAL** and **ABNORMAL** that were labelled when refining the model. 
+
+The confusion matrix allows to assess the model’s prediction output based on the selected confidence threshold to see how many false positives and false negatives are obtained at different confidence thresholds. 
+
+Toggling the **Item counts** icon shows individual image count instead of the percentage numbers.
+
+### Overview 3. Creating a trained Component Assembly Detection solution artifact
+
+This section provides an overview of the process of creating a trained Component Assembly Detection solution artifact.
+
+After evaluating the results of the trained model, a trained solution artifact can be created in a docker format, and exported to a Container Registry location.
+
+> Note: Each component should be trained for anomaly detection prior to creating a Visual Inspection AI solution artifact.
+
+In the **Test & Use** tab on the **Models** page for the **Resistance** model, clicking **Create Solution Artifact** creates an Assembly Inspection solution artifact for a trained model.
+
+When creating the solution artifact you must specify the **Solution artifact name**, **Cloud Source Repository Output gcr path**, and the **Solution type**.
+
+> Note: You can select either a GPU or CPU container here. A GPU container can only be deployed to a container platform that supports the appropriate type of GPU. For the purposes of the next lab you can only test a CPU container so CPU is selected here.
+
+Clicking **Create** triggers the solution artifact container image creation process.
+
+It usually takes a couple of minutes to create the solution artifact.
+
+At this stage the solution artifact is now ready and can be tested in the UI. 
+
+This will allow you to check out the quality of the trained solution immediately using test images.
+
+### Overview 4. Performing batch predictions using an Assembly Inspection solution artifact
+
+This section provides an overview of how to make batch predictions using the Assembly Inspection solution artifact created in the previous section.
+
+On **Test & Use** tab in the **Models** page, clicking on **Create Batch Prediction** starts a cloud batch prediction job using your solution container.
+
+The following details are given to start a batch processing task:
+
+- Batch prediction name: A name for this batch prediction test
+- Solution artifact: The ID of the Solution Artifact
+- gs:// Source Path: The path to a CSV file in a Cloud Storage bucket containing the image names.
+- Destination path: The path in the Cloud Storage bucket, where the JSON output file should be stored.
+
+Clicking **Create** starts the batch processing task.
+
+Clicking on the **Storage** link of the completed batch prediction job shows the batch prediction results and details.
+
+The batch prediction data is contained in the JSON output file stored in the Cloud Storage bucket. 
+
+An example of the output is shown below. 
+
+You can see the data for each of the annotated components that have been detected as well as information about the source image.
+
+```json
+{
+	"annotationsGroups": [{
+		"annotationSet": {
+			"createTime": "2021-07-14T11:21:50.899029Z",
+			"displayName": "Aligned Components",
+			"name": "projects/574980676006/locations/us-central1/datasets/3804178290709626880/annotationSets/2092388219843772416",
+			"polygon": {},
+			"updateTime": "2021-07-14T11:50:25.404367Z"
+		},
+		"annotations": [{
+			"annotationSetId": "2092388219843772416",
+			"annotationSpecId": "2117339437212893184",
+			"name": "localAnnotations/1000000",
+			"polygon": {
+				"normalizedBoundingPoly": {
+					"normalizedVertices": [{
+						"x": 0.50721323,
+						"y": 0.56952035
+					}, {
+						"x": 0.61584163,
+						"y": 0.58288085
+					}, {
+						"x": 0.61100781,
+						"y": 0.6221832
+					}, {
+						"x": 0.50237942,
+						"y": 0.6088227
+					}]
+				}
+			},
+			"source": {
+				"sourceModel": "projects/574980676006/locations/us-central1/solutions/3888084222048468992/modules/4022207048451096576/models/755901049956466688",
+				"type": "MACHINE_PRODUCED"
+			}
+		}, {
+			"annotationSetId": "2092388219843772416",
+			"annotationSpecId": "2117339437212893184",
+			"name": "localAnnotations/1000001",
+			"polygon": {
+				"normalizedBoundingPoly": {
+					"normalizedVertices": [{
+						"x": 0.61049843,
+						"y": 0.4533464
+					}, {
+						"x": 0.64012426,
+						"y": 0.45699003
+					}, {
+						"x": 0.62812692,
+						"y": 0.55453622
+					}, {
+						"x": 0.59850109,
+						"y": 0.55089259
+					}]
+				}
+			},
+			"source": {
+				"sourceModel": "projects/574980676006/locations/us-central11/solutions/3888084222048468992/modules/4022207048451096576/models/755901049956466688",
+				"type": "MACHINE_PRODUCED"
+			}
+		}]
+	}, {
+		"annotationSet": {
+			"classificationLabel": {},
+			"createTime": "2021-07-14T11:50:25.386576Z",
+			"displayName": "Output",
+			"name": "projects/574980676006/locations/us-central1/datasets/3804178290709626880/annotationSets/6562210850008989696",
+			"updateTime": "2021-07-14T11:50:25.666724Z"
+		},
+		"annotations": [{
+			"annotationSetId": "6562210850008989696",
+			"annotationSpecId": "332506609890623488",
+			"classificationLabel": {
+				"confidenceScore": 0.11153886
+			},
+			"name": "localAnnotations/0",
+			"parentAnnotationId": "localAnnotations/1000000",
+			"source": {
+				"sourceModel": "projects/574980676006/locations/us-central1/solutions/3888084222048468992/modules/2553189144998182912/models/8294926826174676992",
+				"type": "MACHINE_PRODUCED"
+			}
+		}, {
+			"annotationSetId": "6562210850008989696",
+			"annotationSpecId": "332506609890623488",
+			"classificationLabel": {
+				"confidenceScore": 0.019765764
+			},
+			"name": "localAnnotations/1",
+			"parentAnnotationId": "localAnnotations/1000001",
+			"source": {
+				"sourceModel": "projects/574980676006/locations/us-central1/solutions/3888084222048468992/modules/2553189144998182912/models/8294926826174676992",
+				"type": "MACHINE_PRODUCED"
+			}
+		}]
+	}, {
+		"annotationSet": {
+			"createTime": "2021-07-14T11:21:50.815073Z",
+			"displayName": "Aligned Inspection Areas",
+			"name": "projects/574980676006/locations/us-central1/datasets/3804178290709626880/annotationSets/6794146230818570240",
+			"polygon": {},
+			"updateTime": "2021-07-14T11:21:50.815073Z"
+		},
+		"annotations": [{
+			"annotationSetId": "6794146230818570240",
+			"annotationSpecId": "8217465132486230016",
+			"labels": {
+				"goog_vi_annotation_set_name": "8538446661494505472",
+				"goog_vi_transform_source_annotation_id": "6793052495921807360"
+			},
+			"name": "localAnnotations/1000002",
+			"polygon": {
+				"normalizedBoundingPoly": {
+					"normalizedVertices": [{
+						"x": 0.32404947,
+						"y": 0.16284555
+					}, {
+						"x": 0.83100849,
+						"y": 0.22519726
+					}, {
+						"x": 0.77095616,
+						"y": 0.71346146
+					}, {
+						"x": 0.26399708,
+						"y": 0.65110981
+					}]
+				}
+			},
+			"source": {
+				"sourceModel": "projects/574980676006/locations/us-central1/solutions/3888084222048468992/modules/4022207048451096576/models/755901049956466688",
+				"type": "MACHINE_PRODUCED"
+			}
+		}]
+	}],
+	"predictedImageUri": "gs://qwiklabs-gcp-00-612891cc3352/demo_pcb_images/image_105_cx45_cy-55_r3.png"
+}
+```
 
 ### Congratulations
 
-Congratulations!
+You've successfully identified and detected components, and applied component selection to align and detect components in all the images. 
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
-
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+You've also reviewed the process of training and evaluating anomaly detection models and seen how to create a trained Assembly Inspection solution artifact, then perform batch prediction using the solution artifact.

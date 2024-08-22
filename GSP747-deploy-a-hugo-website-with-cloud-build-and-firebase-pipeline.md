@@ -1,273 +1,388 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+Deploy a Hugo Website with Cloud Build and Firebase Pipeline
+experiment
+Lab
+schedule
+1 hour
+universal_currency_alt
+No cost
+show_chart
+Intermediate
+info
+This lab may incorporate AI tools to support your learning.
+GSP747
+Google Cloud self-paced labs logo
+
+Overview
+In this lab you will create a pipeline for deploying websites based on Hugo, a static website builder. You will store the website content in Cloud Source Repositories and deploy the website with Firebase, then use Cloud Build to create a pipeline to automatically deploy new content that is committed to the repository.
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
+Objectives
+In this lab you will learn the following:
 
-## GSP087
+An overview of static websites
+Setting up a website with Hugo
+Storing the website content in Cloud Source Repositories
+Deploying the website with Firebase
+Creating a build pipeline with Cloud Build to automate the deployment
+Prerequisites
+The instructions provided here are sufficient to guide you through this lab. You may also find it helpful to have some hands-on experience with the services you will be using. Here are some other labs you may find helpful:
+
+Cloud Source Repositories: Qwik Start
+Build a Serverless App with Cloud Run that Creates PDF Files
+Firebase Web
+The benefits of static websites
+Static site builders like Hugo have become popular because of their ability to produce websites that do not require web servers. With static web platforms there are no server operating systems or software to maintain. There are, however, various operational considerations. For example, you may want to version control your postings, host your web site on a content delivery network ("CDN") and provision an SSL certificate.
+
+You can address these needs by using a Continuous Integration / Continuous Deployment pipeline on Google Cloud. A deployment pipeline enables developers to rapidly innovate by automating the entire deployment process. In this lab, you will learn to build a pipeline that demonstrates this automation.
+
+Setup and requirements
+Before you click the Start Lab button
+Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click Start Lab, shows how long Google Cloud resources will be made available to you.
+
+This hands-on lab lets you do the lab activities yourself in a real cloud environment, not in a simulation or demo environment. It does so by giving you new, temporary credentials that you use to sign in and access Google Cloud for the duration of the lab.
+
+To complete this lab, you need:
+
+Access to a standard internet browser (Chrome browser recommended).
+Note: Use an Incognito or private browser window to run this lab. This prevents any conflicts between your personal account and the Student account, which may cause extra charges incurred to your personal account.
+Time to complete the lab---remember, once you start, you cannot pause a lab.
+Note: If you already have your own personal Google Cloud account or project, do not use it for this lab to avoid extra charges to your account.
+How to start your lab and sign in to the Google Cloud console
+Click the Start Lab button. If you need to pay for the lab, a pop-up opens for you to select your payment method. On the left is the Lab Details panel with the following:
 
-### Overview
+The Open Google Cloud console button
+Time remaining
+The temporary credentials that you must use for this lab
+Other information, if needed, to step through this lab
+Click Open Google Cloud console (or right-click and select Open Link in Incognito Window if you are running the Chrome browser).
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+The lab spins up resources, and then opens another tab that shows the Sign in page.
 
-#### Application architecture
+Tip: Arrange the tabs in separate windows, side-by-side.
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+Note: If you see the Choose an account dialog, click Use Another Account.
+If necessary, copy the Username below and paste it into the Sign in dialog.
 
-The script reports a numeric value to a Cloud monitoring metric.
+student-01-811f1562e5fa@qwiklabs.net
+Copied!
+You can also find the Username in the Lab Details panel.
 
-You do not need to know Node.js or JavaScript for this lab.
+Click Next.
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+Copy the Password below and paste it into the Welcome dialog.
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+UHS1LQwYGhGE
+Copied!
+You can also find the Password in the Lab Details panel.
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+Click Next.
 
-The application includes the following components:
+Important: You must use the credentials the lab provides you. Do not use your Google Cloud account credentials.
+Note: Using your own Google Cloud account for this lab may incur extra charges.
+Click through the subsequent pages:
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+Accept the terms and conditions.
+Do not add recovery options or two-factor authentication (because this is a temporary account).
+Do not sign up for free trials.
+After a few moments, the Google Cloud console opens in this tab.
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+Note: To view a menu with a list of Google Cloud products and services, click the Navigation menu at the top-left. Navigation menu icon
+Process overview
+Here's a diagram of what you are going to build:
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+Cloub Build Pipeline diagram
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
-
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
-
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
-
-#### Objectives
-
-In this lab, you will learn how to perform the following tasks:
-
-- Deploy an autoscaling Compute Engine instance group.
-
-- Create a custom metric used to scale the instance group.
-
-- Use the Cloud Console to visualize the custom metric and instance group size.
-
-### Task 1. Creating the application
-
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
-
-#### Uploading the script files to Cloud Storage
-
-During autoscaling, the instance group will need to create new Compute Engine instances.
-
-When it does, it creates the instances based on an instance template.
-
-Each instance needs a startup script.
-
-Therefore, the template needs a way to reference the startup script.
-
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
-
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
-
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
-
-### Task 2. Create a bucket
-
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
-
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
-
-Accept the default values then click **Create**.
-
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
-
-When the bucket is created, the **Bucket details** page opens.
-
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
-
-```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
-```
-
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
-
-#### Understanding the code components
-
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
-
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
-
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
-
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
-
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
-
-### Task 3. Creating an instance template
-
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
-
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
-
-Click **Create Instance Template** at the top of the page.
-
-Name the instance template `autoscaling-instance01`.
-
-Set **Location** as **Global**.
-
-Scroll down, click **Advanced options**.
-
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
-
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
-
-Click **Create**.
-
-### Task 4. Creating the instance group
-
-In the left pane, click **Instance groups**.
-
-Click **Create instance group** at the top of the page.
-
-**Name**: `autoscaling-instance-group-1`.
-
-For **Instance template**, select the instance template you just created.
-
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
-
-Set **Autoscaling mode** to **Off: do not autoscale**.
-
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
-
-Click **Create**.
-
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
-
-### Task 5. Verifying that the instance group has been created
-
-Wait to see the green check mark next to the new instance group you just created.
-
-It might take the startup script several minutes to complete installation and begin reporting values.
-
-Click Refresh if it seems to be taking more than a few minutes.
-
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
-
-### Task 6. Verifying that the Node.js script is running
-
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
-
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
-
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
-
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
-
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
-
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
-
-Add `"nodeapp"` as line 3, so the code looks similar to this:
-
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
-```
-
-Click **Run query**.
-
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
-
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
-
-### Task 7. Configure autoscaling for the instance groups
-
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
-
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
-
-Click the `autoscaling-instance-group-1` group.
-
-Click **Edit**.
-
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
-
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
-
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
-
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
-
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
-
-- Click **Apply**.
-
-- **Utilization target**: `150`
-
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
-
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
-
-- **Utilization target type**: `Gauge`. Click **Select**.
-
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
-
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
-
-Click **Save**.
-
-### Task 8. Watching the instance group perform autoscaling
-
-The Node.js script varies the custom metric values it reports from each instance over time.
-
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
-
-If the value goes down, the instance group detects this and scales down by removing instances.
-
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
-
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
-
-- In the left pane, click **Instance groups**.
-
-- Click the `builtin-igm` instance group in the list.
-
-- Click the **Monitoring** tab.
-
-- Enable **Auto Refresh**.
-
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
-
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
-
-Hover your mouse over the graphs to see more details.
-
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
-
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
-
-### Task 9. Autoscaling example
-
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
-
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
-
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
-
-While your autoscaling starts up, read through this graph to understand what will be happening.
-
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
-
-### Congratulations
+The goal is to be able to commit code and have it trigger the pipeline which will in turn deploy the website. Your journey will be divided into two parts. First, you will build the website locally and deploy it to Firebase manually so you can gain an understanding of the entire process. Second, you will automate the process by building a pipeline with Cloud Build.
+
+Task 1. Manual deployment
+First build the website manually on a Linux instance to learn the end-to-end process. You will also use the Linux instance to perform some of the one-time tasks that are needed to get Firebase up and running.
+
+Connect to the Linux instance
+From the Navigation menu select Compute Engine > VM Instances. You will see one instance that has been built for you.
+At the end of the line you should see an External IP address and an SSH button as shown in the figure below. If these are obscured by an information panel, close that panel so you can see the entire line.
+External IP address and SSH button highlighted
+
+Make a note of the External IP address for later use.
+Click SSH. A window will appear and you will see a shell prompt.
+Install Hugo locally
+Now install Hugo locally in the Linux instance so that you can test the website locally before deploying it with Firebase. A shell script has been provided to make this easier.
+
+In the Linux instance shell, examine the file installhugo.sh.
+cat /tmp/installhugo.sh
+Copied!
+You can also see the contents below:
+
+Output:
+
+#!/bin/bash
+
+# Copyright 2020 Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+_HUGO_VERSION=0.96.0
+
+echo Downloading Hugo version $_HUGO_VERSION...
+
+wget \
+  --quiet \
+  -O hugo.tar.gz \
+  https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}/hugo_extended_${_HUGO_VERSION}_Linux-64bit.tar.gz
+
+echo Extracting Hugo files into /tmp...
+
+mv hugo.tar.gz /tmp
+tar -C /tmp -xzf /tmp/hugo.tar.gz
+
+echo The Hugo binary is now at /tmp/hugo.
+Note the use of the wget command to download Hugo and the tar command to unpack the Hugo archive. You will see similar commands later in this lab when you create the pipeline.
+
+Enter the commands below to run the script and install Hugo:
+
+cd ~
+/tmp/installhugo.sh
+Copied!
+You will receive a message saying that Hugo has been installed into the /tmp directory as shown below. You are ready to build the website infrastructure.
+
+Output: The HUgo Binary is now at /tmp/hugo.
+
+Create a repository and the initial web site
+Now create a Cloud Source Repository to hold the web site and then clone the repository to the Linux instance. Cloning a repository creates a mirror of it in the shell. This allows you to implement the web site while in the shell and later commit your changes to the file system. Later in this lab, you will set up a pipeline that responds to these commits to the repository.
+
+Install git on the Linux VM
+Enter the following commands in the Linux instance shell:
+
+sudo apt-get update
+sudo apt-get install git
+Copied!
+If prompted, answer Yes to all prompts.
+
+Create and clone a code repository. Enter the following commands in the Linux instance shell:
+cd ~
+gcloud source repos create my_hugo_site
+gcloud source repos clone my_hugo_site
+Copied!
+You will receive confirmations about the creation of the repository and the cloning of the repository as shown in the figure below. You can ignore the two warning messages about the charge for the repository and that the repository is empty.
+
+Warning messages in the output
+
+Click Check my progress to verify the objective.
+Source repository has been created
+
+Now you are ready to create the site structure. Enter the commands below in the Linux shell.
+cd ~
+/tmp/hugo new site my_hugo_site --force
+Copied!
+Normally the hugo command creates the directory. The --force option will create the site in the repository directory, which already exists. This allows you to keep the Git-related information in the directory that you just cloned. You will see messages indicating that the site has been created as shown in the figure below.
+
+Output displays congratulatory message, prompts the user to follow a few more steps, and lists a website for further documentation and guidance
+
+Now install the Ananke theme to provide a layout for your site. Enter the following commands in the Linux instance shell:
+cd ~/my_hugo_site
+git clone \
+  https://github.com/budparr/gohugo-theme-ananke.git \
+  themes/ananke
+echo 'theme = "ananke"' >> config.toml
+Copied!
+You will see messages indicating that the theme has been cloned, as shown below.
+
+Output messages indicating success
+
+Remove the git files from the themes directory:
+sudo rm -r themes/ananke/.git
+sudo rm themes/ananke/.gitignore 
+Copied!
+Note: The git files should be removed so that Cloud Source Repository will add the theme files to version control.
+With the structure of the web site set up, you can now preview it. Enter the command below to launch the site at TCP port 8080:
+cd ~/my_hugo_site
+/tmp/hugo server -D --bind 0.0.0.0 --port 8080
+Copied!
+Hugo will build the site and serve it for access on TCP port 8080 as shown in the figure below. The server will run until it is stopped by pressing CTRL+C.
+
+Command prompt terminal
+
+Open a browser tab and browse to the external IP address at port 8080. Use the following URL, replacing [EXTERNAL IP] with the external IP address of your instance:
+http://[EXTERNAL IP]:8080
+Copied!
+The web site should look like this.
+
+My New Hugo Site web page
+
+Click Check my progress to verify the objective.
+The website is accessible on Port 8080
+
+Go back to the Linux shell and press CTRL+C to stop the Hugo server.
+Deploy the site to Firebase
+Install Firebase CLI in the Linux instance shell:
+curl -sL https://firebase.tools | bash
+Copied!
+Now you need to initialize Firebase. Enter the command below into the shell:
+cd ~/my_hugo_site
+firebase init
+Copied!
+Select Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys using the arrow keys and spacebar and press Enter. When asked for a project option, select Use an existing project, then use the arrow keys, spacebar, and the Enter key to select the Project ID provided on the lab instruction page. For the public directory, select the default value public. For configuring as a single page application, select the default value of N. For setting up automatic builds and deploys with GitHub, select N.
+If asked to overwrite any existing files, select Y.
+
+You are ready to deploy the application. Enter the commands below into the Linux instance shell to rebuild the site with Hugo and to deploy it with Firebase:
+/tmp/hugo && firebase deploy
+Copied!
+After the application has been deployed, you will receive a hosting URL. Click on it and you will see the same website being served from the Firebase CDN (content delivery network). If you receive a generic "welcome" message, wait a few minutes for the CDN to be initialized and refresh the browser window. Save this hosting URL for later use.
+You have now performed the entire deployment locally. Next, automate the process from end to end using Cloud Build.
+
+Task 2. Automate the deployment
+Perform the initial commit
+The goal of building the pipeline is to be able to trigger builds when changes are made to the repository. You will start by performing an initial commit to the repository so that you can validate your ability to make future changes.
+
+Configure the git commands global parameters by entering the commands below into the Linux shell. Make sure to include the quotation marks:
+git config --global user.name "hugo"
+git config --global user.email "hugo@blogger.com"
+Copied!
+Enter the commands below in the Linux shell to create a .gitignore file to exclude certain directories from the repository:
+cd ~/my_hugo_site
+echo "resources" >> .gitignore
+Copied!
+Perform the initial commit to the repository by entering the commands below:
+git add .
+git commit -m "Add app to Cloud Source Repositories"
+git push -u origin master
+Copied!
+You have now committed (uploaded) the initial version of the website to Google Cloud.
+
+Configure the build
+Cloud Build uses a file named cloudbuild.yaml in the root directory of the repository to perform the build. The file is in YAML format. Spacing and indentation are important, so it has already been placed on the Linux instance for you.
+
+Enter the command below in the Linux shell. Note the final period (".") at the end of the cp command:
+cd ~/my_hugo_site
+cp /tmp/cloudbuild.yaml .
+Copied!
+Run the following to see what the cloudbuild.yaml file looks like. Some of the lines have wrapped because of their length.
+cat cloudbuild.yaml
+Copied!
+Output:
+
+# Copyright 2020 Google Inc. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+steps:
+- name: 'gcr.io/cloud-builders/wget'
+  args:
+  - '--quiet'
+  - '-O'
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+steps:
+- name: 'gcr.io/cloud-builders/wget'
+  args:
+  - '--quiet'
+  - '-O'
+  - 'firebase'
+  - 'https://firebase.tools/bin/linux/latest'
+
+- name: 'gcr.io/cloud-builders/wget'
+  args:
+  - '--quiet'
+  - '-O'
+  - 'hugo.tar.gz'
+  - 'https://github.com/gohugoio/hugo/releases/download/v${_HUGO_VERSION}/hugo_extended_${_HUGO_VERSION}_Linux-64bit.tar.gz'
+  waitFor: ['-']
+
+- name: 'ubuntu:18.04'
+  args:
+  - 'bash'
+  - '-c'
+  - |
+    mv hugo.tar.gz /tmp
+    tar -C /tmp -xzf /tmp/hugo.tar.gz
+    mv firebase /tmp
+    chmod 755 /tmp/firebase
+    /tmp/hugo
+    /tmp/firebase deploy --project ${PROJECT_ID} --non-interactive --only hosting -m "Build ${BUILD_ID}"
+
+substitutions:
+  _HUGO_VERSION: 0.96.0
+Here are some observations about the cloudbuild.yaml file:
+There are three named steps in this file each of which is performed by a container image. The first two steps use a Google-supported builder to use wget to download the Hugo and Firebase tools. These two steps run in parallel. Using the wget builder is faster than installing wget manually.
+The third step uses a standard Ubuntu container to install Hugo and Firebase after which the site is built and deployed. Installing Hugo and Firebase for each deployment allows you to change the version of Hugo whenever you desire while also using the latest version of Firebase.
+The tar and wget commands are nearly identical to those used earlier in the installhugo.sh script.
+The file also uses a custom substitution variable (_HUGO_VERSION) and a Google-provided substitution variable (PROJECT_ID) to allow for this template to be used in different environments.
+The Hugo and Firebase binaries are created and installed in a temporary directory so that they do not inadvertently get deployed to the website itself.
+Create the Cloud Build trigger
+Now create a trigger that will respond to commits to the master branch of the repository.
+
+From the command line enter the following command:
+gcloud alpha builds triggers import --source=/tmp/trigger.yaml
+Copied!
+The trigger configuration contains the following details:
+Field	Value
+Name	commit-to-master-branch
+Description	Push to master
+Event	Push to a branch
+Repository	my_hugo_site
+Branch (regex)	^master$ (be sure Invert Regex is unchecked)
+Build Configuration	Cloud Build configuration file (yaml or json)
+Cloud Build Configuration file location	/ cloudbuild.yaml
+The Cloud Build service account
+The Cloud Build Service account needs to have permissions to use Firebase to deploy the website.
+
+Cloud Build	Role	Description
+[PROJECT_NUMBER@cloudbuild.gserviceaccount.com	roles/firebasehosting.admin	Full read/write access to Hosting resources
+Test the pipeline
+Now that you have created the pipeline, you can make a change to the site then commit it to see if the change propagates.
+
+In the Linux shell enter the command below to move to the repository directory:
+cd ~/my_hugo_site
+Copied!
+Edit the file config.toml and change the title:
+Blogging with Hugo and Cloud Build
+Copied!
+In the Linux shell, enter the commands below to commit the changes to the repository and trigger the Cloud Build pipeline:
+git add .
+git commit -m "I updated the site title"
+git push -u origin master
+Copied!
+Check the build history to see the status of the build:
+gcloud builds list
+Copied!
+Check the build logs for the current build:
+gcloud builds log $(gcloud builds list --format='value(ID)' --filter=$(git rev-parse HEAD))
+Copied!
+Grab the URL from the build performed:
+gcloud builds log $(gcloud builds list --format='value(ID)' --filter=$(git rev-parse HEAD)) | grep "Hosting URL"
+Copied!
+Browse to the hosting URL to see the results. You can also go to the Firebase console and examine the project to find the domain name.
+Note: It may take a few minutes for the CDN to update and display the updated site information.
+Note: The site has an SSL certificate and is accessed using the https (Hypertext Transfer Protocol Secure) protocol.
+Click Check my progress to verify the objective.
+Cloud Build has been successfully initiated
 
 Congratulations!
+You have learned how Cloud Build can orchestrate a pipeline to quickly deploy Hugo websites to Firebase, which provides a CDN and SSL certificate. Cloud Build allows you to tailor the process to adapt to your needs. The short deployment times allow you to innovate quickly and test your website revisions with little effort. Consult the Cloud Build and Firebase documentation for more information.
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Google Cloud training and certification
+...helps you make the most of Google Cloud technologies. Our classes include technical skills and best practices to help you get up to speed quickly and continue your learning journey. We offer fundamental to advanced level training, with on-demand, live, and virtual options to suit your busy schedule. Certifications help you validate and prove your skill and expertise in Google Cloud technologies.
 
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+Manual Last Updated July 15, 20

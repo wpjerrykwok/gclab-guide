@@ -1,273 +1,225 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+# Google Kubernetes Engine: Qwik Start
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
-
-## GSP087
+## GSP100
 
 ### Overview
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Google Kubernetes Engine (GKE) provides a managed environment for deploying, managing, and scaling your containerized applications using Google infrastructure. 
 
-#### Application architecture
+The GKE environment consists of multiple machines (specifically Compute Engine instances) grouped to form a container cluster.
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+In this lab, you get hands-on practice with container creation and application deployment with GKE.
 
-The script reports a numeric value to a Cloud monitoring metric.
+### Objectives
 
-You do not need to know Node.js or JavaScript for this lab.
+In this lab you will learn how to:
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+- Create a GKE cluster
+- Deploy an application to the cluster
+- Delete the cluster
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+#### Cluster orchestration with Google Kubernetes Engine
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+Google Kubernetes Engine (GKE) clusters are powered by the Kubernetes open source cluster management system. 
 
-The application includes the following components:
+Kubernetes provides the mechanisms through which you interact with your container cluster. 
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+You use Kubernetes commands and resources to deploy and manage your applications, perform administrative tasks, set policies, and monitor the health of your deployed workloads.
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+Kubernetes draws on the same design principles that run popular Google services and provides the same benefits: automatic management, monitoring and liveness probes for application containers, automatic scaling, rolling updates, and more. 
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+When you run your applications on a container cluster, you're using technology based on Google's 10+ years of experience with running production workloads in containers.
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
+#### Kubernetes on Google Cloud
 
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
+When you run a GKE cluster, you also gain the benefit of advanced cluster management features that Google Cloud provides. 
 
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
+These include:
 
-#### Objectives
+- Load balancing for Compute Engine instances
+- Node pools to designate subsets of nodes within a cluster for additional flexibility
+- Automatic scaling of your cluster's node instance count
+- Automatic upgrades for your cluster's node software
+- Node auto-repair to maintain node health and availability
+- Logging and Monitoring with Cloud Monitoring for visibility into your cluster
 
-In this lab, you will learn how to perform the following tasks:
+Now that you have a basic understanding of Kubernetes, you will learn how to deploy a containerized application with GKE in less than 30 minutes. 
 
-- Deploy an autoscaling Compute Engine instance group.
+### Task 1. Set a default compute zone
 
-- Create a custom metric used to scale the instance group.
+Your compute zone is an approximate regional location in which your clusters and their resources live. 
 
-- Use the Cloud Console to visualize the custom metric and instance group size.
+For example, `us-central1-a` is a zone in the `us-central1` region.
 
-### Task 1. Creating the application
+In your Cloud Shell session, run the following commands.
 
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
-
-#### Uploading the script files to Cloud Storage
-
-During autoscaling, the instance group will need to create new Compute Engine instances.
-
-When it does, it creates the instances based on an instance template.
-
-Each instance needs a startup script.
-
-Therefore, the template needs a way to reference the startup script.
-
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
-
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
-
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
-
-### Task 2. Create a bucket
-
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
-
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
-
-Accept the default values then click **Create**.
-
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
-
-When the bucket is created, the **Bucket details** page opens.
-
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
+Set the default compute region:
 
 ```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
+gcloud config set compute/region us-east1
 ```
 
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
+Expected output:
 
-#### Understanding the code components
-
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
-
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
-
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
-
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
-
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
-
-### Task 3. Creating an instance template
-
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
-
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
-
-Click **Create Instance Template** at the top of the page.
-
-Name the instance template `autoscaling-instance01`.
-
-Set **Location** as **Global**.
-
-Scroll down, click **Advanced options**.
-
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
-
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
-
-Click **Create**.
-
-### Task 4. Creating the instance group
-
-In the left pane, click **Instance groups**.
-
-Click **Create instance group** at the top of the page.
-
-**Name**: `autoscaling-instance-group-1`.
-
-For **Instance template**, select the instance template you just created.
-
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
-
-Set **Autoscaling mode** to **Off: do not autoscale**.
-
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
-
-Click **Create**.
-
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
-
-### Task 5. Verifying that the instance group has been created
-
-Wait to see the green check mark next to the new instance group you just created.
-
-It might take the startup script several minutes to complete installation and begin reporting values.
-
-Click Refresh if it seems to be taking more than a few minutes.
-
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
-
-### Task 6. Verifying that the Node.js script is running
-
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
-
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
-
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
-
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
-
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
-
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
-
-Add `"nodeapp"` as line 3, so the code looks similar to this:
-
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
+```bash
+Updated property [compute/region].
 ```
 
-Click **Run query**.
+Set the default compute zone:
 
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
+```bash
+gcloud config set compute/zone us-east1-c
+```
 
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
+Expected output:
 
-### Task 7. Configure autoscaling for the instance groups
+```bash
+Updated property [compute/zone].
+```
 
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
+### Task 2. Create a GKE cluster
 
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
+A cluster consists of at least one **cluster master** machine and multiple worker machines called **nodes**. 
 
-Click the `autoscaling-instance-group-1` group.
+Nodes are Compute Engine virtual machine (VM) instances that run the Kubernetes processes necessary to make them part of the cluster.
 
-Click **Edit**.
+> Note: Cluster names must start with a letter and end with an alphanumeric, and cannot be longer than 40 characters.
 
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
+Run the following command:
 
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
+Create a cluster:
 
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
+```bash
+gcloud container clusters create --machine-type=e2-medium --zone=us-east1-c lab-cluster
+```
 
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
+You can ignore any warnings in the output. It might take several minutes to finish creating the cluster.
 
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
+Expected output:
 
-- Click **Apply**.
+```bash
+NAME: lab-cluster
+LOCATION: us-east1-c
+MASTER_VERSION: 1.22.8-gke.202
+MASTER_IP: 34.67.240.12
+MACHINE_TYPE: e2-medium
+NODE_VERSION: 1.22.8-gke.202
+NUM_NODES: 3
+STATUS: RUNNING
+```
 
-- **Utilization target**: `150`
+### Task 3. Get authentication credentials for the cluster
 
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
+After creating your cluster, you need authentication credentials to interact with it.
 
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
+Authenticate with the cluster:
 
-- **Utilization target type**: `Gauge`. Click **Select**.
+```bash
+gcloud container clusters get-credentials lab-cluster
+```
 
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
+Expected output:
 
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
+```bash
+Fetching cluster endpoint and auth data.
+kubeconfig entry generated for my-cluster.
+```
 
-Click **Save**.
+### Task 4. Deploy an application to the cluster
 
-### Task 8. Watching the instance group perform autoscaling
+You can now deploy a containerized application to the cluster. 
 
-The Node.js script varies the custom metric values it reports from each instance over time.
+For this lab, you'll run `hello-app` in your cluster.
 
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
+GKE uses Kubernetes objects to create and manage your cluster's resources. 
 
-If the value goes down, the instance group detects this and scales down by removing instances.
+Kubernetes provides the Deployment object for deploying stateless applications like web servers. 
 
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
+Service objects define rules and load balancing for accessing your application from the internet.
 
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
+To create a new Deployment hello-server from the hello-app container image, run the following kubectl create command:
 
-- In the left pane, click **Instance groups**.
+```bash
+kubectl create deployment hello-server --image=gcr.io/google-samples/hello-app:1.0
+```
 
-- Click the `builtin-igm` instance group in the list.
+Expected output:
 
-- Click the **Monitoring** tab.
+```bash
+deployment.apps/hello-server created
+```
 
-- Enable **Auto Refresh**.
+This Kubernetes command creates a deployment object that represents `hello-server`. 
 
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
+In this case, `--image` specifies a container image to deploy. 
 
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
+The command pulls the example image from a Container Registry bucket. 
 
-Hover your mouse over the graphs to see more details.
+`gcr.io/google-samples/hello-app:1.0` indicates the specific image version to pull. 
 
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
+If a version is not specified, the latest version is used.
 
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
+To create a Kubernetes Service, which is a Kubernetes resource that lets you expose your application to external traffic, run the following `kubectl expose` command:
 
-### Task 9. Autoscaling example
+```bash
+kubectl expose deployment hello-server --type=LoadBalancer --port 8080
+```
 
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
+In this command:
 
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
+- `--port` specifies the port that the container exposes.
+- `type="LoadBalancer"` creates a Compute Engine load balancer for your container.
 
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
+Expected output:
 
-While your autoscaling starts up, read through this graph to understand what will be happening.
+```bash
+service/hello-server exposed
+```
 
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
+To inspect the `hello-server` Service, run `kubectl get`:
+
+```bash
+kubectl get service
+```
+
+```bash
+Expected output:
+
+NAME             TYPE            CLUSTER-IP      EXTERNAL-IP     PORT(S)           AGE
+hello-server     loadBalancer    10.39.244.36    35.202.234.26   8080:31991/TCP    65s
+kubernetes       ClusterIP       10.39.240.1               433/TCP           5m13s
+```
+
+> Note: It might take a minute for an external IP address to be generated. Run the previous command again if the `EXTERNAL-IP` column status is **pending**.
+
+To view the application from your web browser, open a new tab and enter the following address, replacing `[EXTERNAL IP]` with the `EXTERNAL-IP` for `hello-server`.
+
+```bash
+http://[EXTERNAL-IP]:8080
+```
+
+Expected output: 
+
+The browser tab displays the message **Hello, world!** as well as the version and hostname.
+
+### Task 5. Deleting the cluster
+
+To **delete** the cluster, run the following command:
+
+```bash
+gcloud container clusters delete lab-cluster
+```
+
+When prompted, type **Y** to confirm.
+
+Deleting the cluster can take a few minutes. 
+
+For more information on deleted GKE clusters from the Google Kubernetes Engine (GKE) article, Deleting a cluster.
 
 ### Congratulations
 
-Congratulations!
+You have just deployed a containerized application to Google Kubernetes Engine! 
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+In this lab, you created a GKE cluster, deployed a containerized application to the cluster, and deleted the cluster. 
 
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+You can now apply this knowledge to deploy your own applications with GKE.

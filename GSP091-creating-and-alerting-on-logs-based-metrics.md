@@ -1,11 +1,3 @@
----
-title: "Walkthrough... Creating and Alerting on Logs-based Metrics (GSP091)"
-tags: [Google Cloud, how-to]
-style: fill
-color: secondary
-description: 
----
-
 # Creating and Alerting on Logs-based Metrics
 
 ## GSP091

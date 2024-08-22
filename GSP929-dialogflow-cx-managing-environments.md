@@ -1,273 +1,382 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+Dialogflow CX: Managing Environments
+experiment
+Lab
+schedule
+1 hour
+universal_currency_alt
+No cost
+show_chart
+Introductory
+info
+This lab may incorporate AI tools to support your learning.
+GSP929
+Google Cloud self-paced labs logo
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
+Overview
+Most businesses go through different phases of project development and production cycles. Effective maintainance of these projects require systems and processes to manage versions and environments. Dialogflow provides tools within the UI for managing multiple versions and loading specific versions to dedicated environments, which allows usage for different purposes (and perhaps by different teams). In this lab you'll explore the management of Dialogflow versions and environments.
 
-## GSP087
+The following are definitions of versions and environments with respect to Dialogflow.
 
-### Overview
+Versions: at the end of the development cycle, it's customary to freeze your virtual agent so it can go through a QA cycle and presumably to production later. Each time you freeze your agent, you'll create a version of it, complete with version number and description.
+Environments: during the development cycle, you may have different teams needing to access different versions, and certainly for production you'll have a QA'd version that doesn't change until the next update. If your business is larger, you may even have independent divisions of the business with their own virtual agents. You can create different environments and load the version each team needs to access. Note that by default there is a working environment, Draft, where all changes are made to an agent using the Dialogflow user interface. To load a virtual agent you've modified in the Draft environment to another environment, you'll need to first establish a version of it.
+Objectives
+By the end of this lab, you will be able to:
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Create versions of your virtual agent.
+Create environments where your virtual agent will be published.
+Load a saved version of your virtual agent to an environment.
+Change which version is loaded to an environment.
+Prerequisites
+This lab uses the basic Flight Booker agent developed in Dialogflow CX: Bot Building Basics and assumes basic knowledge of Dialogflow CX such as using the Test Simulator and how intents, flows, and pages work.
 
-#### Application architecture
+Setup
+Before you click the Start Lab button
+Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click Start Lab, shows how long Google Cloud resources will be made available to you.
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+This hands-on lab lets you do the lab activities yourself in a real cloud environment, not in a simulation or demo environment. It does so by giving you new, temporary credentials that you use to sign in and access Google Cloud for the duration of the lab.
 
-The script reports a numeric value to a Cloud monitoring metric.
+To complete this lab, you need:
 
-You do not need to know Node.js or JavaScript for this lab.
+Access to a standard internet browser (Chrome browser recommended).
+Note: Use an Incognito or private browser window to run this lab. This prevents any conflicts between your personal account and the Student account, which may cause extra charges incurred to your personal account.
+Time to complete the lab---remember, once you start, you cannot pause a lab.
+Note: If you already have your own personal Google Cloud account or project, do not use it for this lab to avoid extra charges to your account.
+How to start your lab and sign in to the Google Cloud console
+Click the Start Lab button. If you need to pay for the lab, a pop-up opens for you to select your payment method. On the left is the Lab Details panel with the following:
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+The Open Google Cloud console button
+Time remaining
+The temporary credentials that you must use for this lab
+Other information, if needed, to step through this lab
+Click Open Google Cloud console (or right-click and select Open Link in Incognito Window if you are running the Chrome browser).
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+The lab spins up resources, and then opens another tab that shows the Sign in page.
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+Tip: Arrange the tabs in separate windows, side-by-side.
 
-The application includes the following components:
+Note: If you see the Choose an account dialog, click Use Another Account.
+If necessary, copy the Username below and paste it into the Sign in dialog.
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+student-01-bd37c67a34bb@qwiklabs.net
+Copied!
+You can also find the Username in the Lab Details panel.
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+Click Next.
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+Copy the Password below and paste it into the Welcome dialog.
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
+Zte9CdOVRyCJ
+Copied!
+You can also find the Password in the Lab Details panel.
 
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
+Click Next.
 
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
+Important: You must use the credentials the lab provides you. Do not use your Google Cloud account credentials.
+Note: Using your own Google Cloud account for this lab may incur extra charges.
+Click through the subsequent pages:
 
-#### Objectives
+Accept the terms and conditions.
+Do not add recovery options or two-factor authentication (because this is a temporary account).
+Do not sign up for free trials.
+After a few moments, the Google Cloud console opens in this tab.
 
-In this lab, you will learn how to perform the following tasks:
+Note: To view a menu with a list of Google Cloud products and services, click the Navigation menu at the top-left. Navigation menu icon
+Task 1. Getting started with Dialogflow CX
+First, get logged in to Dialogflow CX and create a new agent.
 
-- Deploy an autoscaling Compute Engine instance group.
+Name your virtual agent 'Flight Booker - Env Mgt' when you get to that point in the steps.
 
-- Create a custom metric used to scale the instance group.
+Assumption: You've already logged into Google Cloud before continuing with the steps below.
 
-- Use the Cloud Console to visualize the custom metric and instance group size.
+In an new incognito window, navigate to Dialogflow.
 
-### Task 1. Creating the application
+Click on Sign-in with Google.
 
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
+Select the student account that you started the lab with.
 
-#### Uploading the script files to Cloud Storage
+Next, you explicitly specify that you want to use Dialogflow CX instead of Dialogflow ES.
 
-During autoscaling, the instance group will need to create new Compute Engine instances.
+In the menu bar at the left, click on Dialogflow CX.
 
-When it does, it creates the instances based on an instance template.
+A new page for Dialogflow CX opens and a blue Dialogflow icon appears. On this page, you should see a pop-up asking you to select a project.
 
-Each instance needs a startup script.
+Search the list in the pop-up for the project that matches your assigned Project ID for this lab. Click on your project ID.
 
-Therefore, the template needs a way to reference the startup script.
+Note: If you don't see your Project ID listed, look at the user on the right side to confirm that you are using Dialogflow CX as "student".
+Dialogflow CX title bar highlighting the project box and the user avatar
 
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
+You will now see a page telling you "To use Dialogflow CX with this project, enable the following APIs".
 
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
+Click on Enable API.
 
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
+It shouldn't take more than half a minute or so for this activity to complete.
 
-### Task 2. Create a bucket
+If it seems this task is taking a long time, refresh the page.
 
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
+Once complete, you will be on the Dialogflow CX Agents page.
 
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
+Click on Create agent.
 
-Accept the default values then click **Create**.
+If prompted with Get started with Dialogflow CX click Build your own.
 
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
+Enter a name for the agent (e.g., "Cloudio-cx").
 
-When the bucket is created, the **Bucket details** page opens.
+Set the location to us-central1.
 
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
+Ensure timezone and default language are set appropriately.
 
-```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
-```
+Click Create.
 
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
+Once the agent is created, you will see the design and configuration portion of the Dialogflow CX UI.
 
-#### Understanding the code components
+After creating the agent, navigate to Agent Settings > General > Logging settings and click on Enable Cloud Logging and Enable conversation history option. It will generate logs for this agent.
 
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
+Click Save.
 
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
+The Agent Settings page, wherein the checked Enable stackdriver logging box is highlighted.
+Click Check my progress below to verify you're on track in this lab.
 
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
+Getting started with Dialogflow CX
+Task 2. Importing a .blob virtual agent file
+Import the virtual agent from the earlier lab, Dialogflow CX: Bot Building Basics, and use it to explore the environment functionality:
 
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
+Click the following link to download the sample lab 1 virtual agent solution, gsp929-start-agent, to your local hard drive.
 
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
+Select View all agents in the Agent dropdown menu at the top of the Dialogflow CX UI.
 
-### Task 3. Creating an instance template
+Click the context menu (three vertical dots More icon) to the right of your virtual agent.
 
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
+Select Restore from the expanded menu options.
 
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
+Select the Upload radio button.
 
-Click **Create Instance Template** at the top of the page.
+Click on select file.
 
-Name the instance template `autoscaling-instance01`.
+Navigate to and select the gsp929-start-agent.blob that you downloaded to your hard drive.
 
-Set **Location** as **Global**.
+Click Open.
 
-Scroll down, click **Advanced options**.
+Click Restore.
 
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
+Refer to the Dialogflow CX 'restore' documentation as needed.
 
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
+Now you have a virtual agent that has everything completed from the earlier lab.
 
-Click **Create**.
+Click Check my progress below to verify you're on track in this lab.
+Importing a .blob virtual agent file
 
-### Task 4. Creating the instance group
+Task 3. Testing in the Draft environment
+Click on Test Agent in the upper right to open the simulator pane.
 
-In the left pane, click **Instance groups**.
+Notice there is an Environment dropdown.
 
-Click **Create instance group** at the top of the page.
+By default, you should see Draft in this dropdown because you haven't yet created any other environment.
 
-**Name**: `autoscaling-instance-group-1`.
+Notice there is a second dropdown for Flow.
 
-For **Instance template**, select the instance template you just created.
+By default, you should see Flow in this dropdown because no other flows exist. You could select Default Start Flow, but it isn't necessary at this point.
 
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
+In the Talk to agent box, type "i want to book a flight".
 
-Set **Autoscaling mode** to **Off: do not autoscale**.
+The next response from the agent should be, 'What city would you like the flight to depart from?'
 
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
+Notice the data at the top of the conversation that shows Environment: Draft and Flow: Default Start Flow.
 
-Click **Create**.
+You may have noticed some of this while completing the earlier lab. Now you'll need to pay closer attention to what's selected in the dropdowns as you move forward through this lab.
 
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
+Click Check my progress below to verify you're on track in this lab.
+Testing in the Draft environment
 
-### Task 5. Verifying that the instance group has been created
+Task 4. Creating environments
+Click on the Manage tab in the main menu.
 
-Wait to see the green check mark next to the new instance group you just created.
+Select Environments on the left side.
 
-It might take the startup script several minutes to complete installation and begin reporting values.
+Click + Create to create a new environment.
 
-Click Refresh if it seems to be taking more than a few minutes.
+Enter 'QA' for the Display Name.
 
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
+Click Save.
 
-### Task 6. Verifying that the Node.js script is running
+Note: You'll see a message saying 'Start Flow' is not included in the environment. Why do you think this is?
+Up to this point, you haven't yet created a published version of the Default Start Flow, or any other flow for that matter. Notice under Version next to the Default Start Flow that the only item in the dropdown list is 'Not published'.
+Dialogflow needs at least one Start Flow to be published in an environment. Once you publish a version of your agent (which includes a Start Flow), Dialogflow will no longer throw this error.
+Click x to dismiss the environment creation error message.
 
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
+Select Versions in the main menu.
 
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
+Click on Default Start Flow.
 
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
+Click + Create to create a version of the flow.
 
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
+For the Display name field enter 'Flight booker main v1 chat bot' .
 
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
+Enter a description in the description box on what's included in this version of the virtual agent. For instance, you could enter 'Version 1 includes functionality to retrieve ticketing to/from and travel dates.'
 
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
+Click Save.
 
-Add `"nodeapp"` as line 3, so the code looks similar to this:
+You should now see the Default Start Flow in the Versions list with the # versions, equal to 1.
 
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
-```
+Click on Default Start Flow under Flow to view additional details about the version.
 
-Click **Run query**.
+Notice whether the status shows Not ready or Ready.
 
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
+Select Environments to reattempt configuring a new environment.
 
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
+Click + Create.
 
-### Task 7. Configure autoscaling for the instance groups
+Enter 'QA' for the Display Name.
 
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
+In the Flow section, choose Flight booker main v1 chat bot from the Version dropdown list next to the Default Start Flow. Recall that this didn't exist in the dropdown earlier.
 
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
+Click Save.
 
-Click the `autoscaling-instance-group-1` group.
+Note: You may see a message such as:
+Version 'projects/qwiklabs-gcp-03-407df58d36b0/locations/us-central1//agents/e2779218-b813-4844-a0ea-ec2ef504636d/flows/00000000-0000-0000-0000-000000000000/versions/1' is not ready to serve because its training is RUNNING. Wait for training to finish or fix the version if its training failed.
+This is caused when Dialogflow is still capturing and training your versioned agent. Do you remember if the status of the version creation showed Not ready? Try saving again after waiting a few moments for the version creation status to change to Ready.
+You should now see your new QA environment in the list with a Last modified date.
 
-Click **Edit**.
+Task 5. Testing in your new environment
+Next, you can test out your versioned virtual agent in the environment you created.
 
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
+Click on Test Agent in the upper right to open the simulator pane.
 
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
+Select QA from the Environment dropdown.
 
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
+Note: This step is important in order to test the specific version in a specific environment. Otherwise, you could be testing something you weren't expecting.
+Click the "Reset" button in the Test Agent pane to clear the simulator from previous tests.
 
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
+In the Talk to agent box, enter 'i want to book a flight'.
 
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
+Notice the information at the top of the conversation changed slightly in that it now shows Environment: QA.
 
-- Click **Apply**.
+This is one of the ways you can run test cases in different environments. However, you may be thinking, if the version loaded to QA is the same as what's in Draft, testing will produce the same results. You're right. Next you'll make a change that makes it more obvious.
 
-- **Utilization target**: `150`
+Click Check my progress below to verify you're on track in this lab.
+Testing in QA environment
 
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
+Task 6. Creating an additional version
+Next you'll make a change to your virtual agent, save it as a new version, and load it to a new environment.
 
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
+Click on the Build tab from the main menu.
 
-- **Utilization target type**: `Gauge`. Click **Select**.
+Click on the Ticket information page.
 
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
+Click on Edit fulfillment to edit the entry fulfillment information.
 
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
+Add a new prompt in the Agent says box saying, 'I'll be happy to assist you with that.'
 
-Click **Save**.
+Click Save.
 
-### Task 8. Watching the instance group perform autoscaling
+At this point, you've saved the change to your working draft. Next you'll create a new version of the virtual agent that includes this change.
 
-The Node.js script varies the custom metric values it reports from each instance over time.
+Go back to Manage and Versions.
 
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
+Click on the Default Start Flow to begin the process of creating a new version for it.
 
-If the value goes down, the instance group detects this and scales down by removing instances.
+Repeat the versioning steps above to create a new version of your Default Start Flow called 'Flight booker main v2 chat bot'.
 
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
+Add a description, such as 'Version 2 adds a friendly greeting before prompting for flight details'.
 
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
+Click Save.
 
-- In the left pane, click **Instance groups**.
+You should now see number of versions incremented to 2 for the Default Start Flow in the Versions list.
 
-- Click the `builtin-igm` instance group in the list.
+Task 7. Creating an additional environment
+Repeat the steps you followed above to create a new environment called 'Dev' that uses the new version 2 of your Default Start Flow.
 
-- Click the **Monitoring** tab.
+Select your Flight booker main v2 chat bot from the version dropdown.
 
-- Enable **Auto Refresh**.
+Click Save.
 
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
+Note: You may again get an error similar to the following, so just wait a few moments and try saving again.
+Version 'projects/qwiklabs-gcp-00-fe6cab958249/locations/us-central1/agents/6792c492-5f79-4ccf-8f17-e757b34f38b9/flows/00000000-0000-0000-0000-000000000000/versions/2' is not ready to serve because its training is RUNNING. Wait for training to finish or fix the version if its training failed.
+Now your latest version of your flow is loaded to the Dev environment.
 
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
+Next you'll go back to the simulator to test your new Flight booker main v2 chat bot version.
 
-Hover your mouse over the graphs to see more details.
+Open the Test Agent pane if not open already.
 
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
+Click the "Reset" button in the Test Agent pane to clear the simulator from previous tests.
 
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
+From the Environment dropdown select Dev.
 
-### Task 9. Autoscaling example
+Type 'i want to book a flight' into the Talk to agent box.
 
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
+You should get a response from the agent saying, I'll be happy to assist you with that., followed by a prompt for the departure city. This indicates that it's running the v2 version of your agent.
 
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
+Click Check my progress below to verify you're on track in this lab.
+Testing in Dev environment
 
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
+Knowledge check (optional)
 
-While your autoscaling starts up, read through this graph to understand what will be happening.
+What must you do before you can deploy a virtual agent to an existing custom environment?
 
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
+You must remove the version of the agent already loaded.
 
-### Congratulations
+You must create another new custom environment.
+
+You must create a new custom environment and select it in the dropdown of the Test Agent.
+
+You must create a version of the virtual agent.
+
+Task 8. Managing different environments
+You've created two environments now and loaded a different version into each. What if you need to change the version loaded into one of those environments?
+
+Click on Environments in the left pane as needed to get to the view of both of your environments, QA and Dev.
+
+Click on the QA environment.
+
+Select Flight booker main v2 chat bot from the version dropdown.
+
+Click Save.
+
+Notice the Last modified time for the version.
+
+Use the test simulator to ensure the version two is loaded. (Recall that you added the friendly greeting to this one.) Don't forget to click "Reset" to begin a fresh test scenario and choose QA in the environment dropdown.
+
+Go back and load Flight booker main v1 chat bot to the QA environment.
+
+Retest. Was it what you expected? You should no longer see the friendly greeting prior to the prompt for departure city.
+
+Discuss your working environment - What version of your agent do you suppose would be tested if you ran the test simulator using the Draft environment? You guessed it! The working copy that you've recently saved or uploaded. You can test the working copy of your virtual agent in Draft until you're ready to create a version of it. At that point, you could save it to another environment so that another team can begin testing that frozen version.
+
+By selecting a specific environment, the test is running the version of your virtual agent loaded to the specified environment (which may be different from what you're currently working on in Dialogflow in Draft mode). Another benefit is you can test different versions without going through the process of retraining the model (which can take some time for larger, more complex virtual agents).
+Check your knowledge
+
+When you see the message, 'Start Flow' is not included in the environment, what does it mean?
+
+You have already loaded another version to the environment.
+
+You cannot create a custom environment because there are no existing versions that could be deployed to it (Dialogflow needs at least one Start Flow).
+
+You cannot create a new version because there are no environments where it can be deployed.
+
+Its just a warning, not an error. You can ignore it.
+
+
+When you want to test the Default Start Flow for a version of your agent in a specific environment, you must do what at minimum? Choose the most accurate answer.
+
+Specify which flow you mean to test.
+
+Specify the environment and flow you mean to test.
+
+Specify which environment you mean to test in.
+
+Specify the environment, flow, and intents you mean to test.
+
+Before you sign out, you can to export your virtual agent if you want. Recall that this is done through the following general steps:
+
+Select View all agents from the Agent dropdown at the top.
+
+Click on the context menu (three vertical dots) and choose Export.
+
+Click on the Download radio button.
+
+Click Export.
 
 Congratulations!
+Now you can manage different versions of a virtual agent and run tests in different environments.
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
-
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+Google Cloud training and certification
+...helps you make the most of Google Cloud technologies. Our classes include technical skills and best practices to help you get up to speed quickly and continue your learning journey. We offer fundamental to advanced level trainin

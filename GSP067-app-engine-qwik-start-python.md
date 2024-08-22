@@ -1,150 +1,224 @@
-# A Tour of Firebase
+# App Engine: Qwik Start - Python
 
-## GSP1132
+## GSP067
 
-### Overview
+## Overview
 
-If you are new to cloud computing or looking for an overview of Google Cloud and Firebase, you are in the right place. 
+App Engine allows developers to focus on doing what they do best, writing code, and not what it runs on. 
 
-Read on to learn about the specifics of this lab and areas that you will get hands-on practice with.
+Developers upload their apps to App Engine, and Google Cloud takes care of the rest. 
 
-#### What you'll learn
+The notion of servers, virtual machines, and instances have been abstracted away, with App Engine providing all the compute necessary. 
 
-In this lab, you will learn about the following:
+Developers don't have to worry about operating systems, web servers, logging, monitoring, load-balancing, system administration, or scaling, as App Engine takes care of all that. 
 
-- The lab platform, and how to identify key features of a lab environment
+Developers only need to focus on building solutions for their organizations or their users.
 
-- How to access the Firebase Cloud console with specific credentials
+The App Engine standard environment provides application-hosting services supporting the following languages: Python, Java, PHP, Go, Node.js, and Ruby. 
 
-- How to use the Firebase Cloud Navigation menu to identify types of Firebase services
+The App Engine flexible environment provides even more flexibility by supporting custom runtimes, however it is out-of-scope for this lab.
 
-#### Prerequisites
+App Engine is Google Cloud's original serverless runtime, and since its original launch in 2008, has been joined by:
 
-This is an introductory-level lab and the first lab you should take if you're unfamiliar with Firebase. 
+- Cloud Functions, great for situations where you don't have an entire app, have broken up a larger, monolithic app into multiple microservices, or have short event-driven tasks that execute based on user activity.
 
-If you are already experienced with Firebase Cloud console, consider taking one of the following labs:
+- Cloud Run, the serverless container-hosting service similar to App Engine but more accurately reflects the state of software development today.
 
-- Getting Started with Firebase Web
+In this lab, you'll learn how to deploy a basic app to App Engine, but we invite you to also explore Cloud Functions and Cloud Run. 
 
-- Getting started with Firebase Authentication
+App Engine makes it easy to build and deploy an application that runs reliably even under heavy load and with large amounts of data. (Cloud Functions and Cloud Run do the same.)
 
-- Getting started with Cloud Firestore
+App Engine apps can access numerous additional Cloud or other Google services for use in their applications:
 
-### Setup and Requirements
+- NoSQL database: Cloud Datastore, Cloud Firestore, Cloud BigTable
+- Relational database: Cloud SQL or Cloud AlloyDB, Cloud Spanner
+- File/object storage: Cloud Storage, Cloud Filestore, Google Drive
+- Caching: Cloud Memorystore (Redis or memcached)
+- Task execution: Cloud Tasks, Cloud Pub/Sub, Cloud Scheduler, Cloud Workflows
+- User authentication: Cloud Identity Platform, Firebase Auth, Google Identity Services
 
-#### Understanding Regions and Zones
+Applications run in a secure, sandboxed environment, allowing App Engine standard environment to distribute requests across multiple servers, and scaling servers to meet traffic demands. 
 
-Certain Compute Engine resources live in regions or zones. 
+Your application runs within its own secure, reliable environment that is independent of the hardware, operating system, or physical location of the server.
 
-A region is a specific geographical location where you can run your resources. 
+This hands-on lab shows you how to create a small App Engine application that displays a short message.
 
-Each region has one or more zones. 
+### What you'll learn
 
-For example, the `us-central1` region denotes a region in the Central United States that has zones `us-central1-a`, `us-central1-b`, `us-central1-c`, and `us-central1-f`.
+In this lab you'll do the following with a Python app:
 
-Regions|Zones
-Western US|us-west1-a, us-west1-b
-Central US|us-central1-a, us-central1-b, us-central1-d, us-central1-f
-Eastern US|us-east1-b, us-east1-c, us-east1-d
-Western Europe|europe-west1-b, europe-west1-c, europe-west1-d
-Eastern Asia|asia-east1-a, asia-east1-b, asia-east1-c
+- Clone/download
 
-Resources that live in a zone are referred to as zonal resources. 
+- Test
 
-irtual machine Instances and persistent disks live in a zone. 
+- Update
 
-To attach a persistent disk to a virtual machine instance, both resources must be in the same zone. 
+- Test
 
-Similarly, if you want to assign a static IP address to an instance, the instance must be in the same region as the static IP.
+- Deploy
 
-### Task 1. Initialize the demo project
+## Setup and requirement
 
-The Firebase suite of tools is linked to a Google Cloud project, so you will see a project identifier and project name in the Firebase information.
+```bash
+gcloud config set compute/region us-west1
+```
 
-Firebase projects are accessed via the Firebase console. Take a moment to open the Firebase console in a new Incognito window.
+## Task 1. Enable Google App Engine Admin API
 
-The first step to access a Firebase project is to select or create a project. Firebase provides a demo project for users to experience the environment.
+The App Engine Admin API enables developers to provision and manage their App Engine Applications.
 
-### Task 2. Firebase console
+In the left **Navigation menu**, click **APIs & Services** > **Library**.
 
-In the Firebase user interface, the project **Overview** > **Project** settings menu option will display information about the project. 
+Type "App Engine Admin API" in the search box.
 
-A Firebase Project has a name, number, and ID. 
+Click the **App Engine Admin API** card.
 
-These identifiers are frequently used when interacting with Google Cloud services. 
+Click **Enable**. If there is no prompt to enable the API, then it is already enabled and no action is needed.
 
-You are working with one project to get experience with a specific service or feature of Firebase.
+## Task 2. Download the Hello World app
 
-From the project setting page, you will also see any apps that have been registered under the current project.
+There is a simple Hello World app for Python you can use to quickly get a feel for deploying an app to Google Cloud. 
 
-Firebase includes support for a number of different language runtimes including:
+Follow these steps to download Hello World to your Google Cloud instance.
 
-- iOS
-- Android
-- Web
-- Unity
-- Flutter
+Enter the following command to copy the Hello World sample app repository to your Google Cloud instance:
 
-### Task 3. Authentication
+```bash
+git clone https://github.com/GoogleCloudPlatform/python-docs-samples.git
+```
 
-Firebase Authentication provides backend services, easy-to-use SDKs, and ready-made UI libraries to authenticate users to your app. 
+Go to the directory that contains the sample code:
 
-It supports authentication using passwords, phone numbers, popular federated identity providers like Google, Facebook and Twitter, and more.
+```bash
+cd python-docs-samples/appengine/standard_python3/hello_world
+```
 
-### Task 4. Hosting
+Setup python environment:
 
-Firebase Hosting is production-grade web content hosting for developers. 
+```bash
+sudo apt install python3 -y
+sudo apt install python3.11-venv
+python3 -m venv create myvenv
+source myvenv/bin/activate
+```
 
-With a single command, you can quickly deploy web apps and serve both static and dynamic content to a global CDN (content delivery network). 
+## Task 3. Test the application
 
-You can also pair Firebase Hosting with Cloud Functions or Cloud Run to build and host microservices on Firebase.
+Test the application using the Google Cloud development server (`dev_appserver.py`), which is included with the preinstalled App Engine SDK.
 
-Firebase Hosting can be used to deploy static and dynamic web content. 
+From within your helloworld directory where the app's app.yaml configuration file is located, start the Google Cloud development server with the following command:
 
-It provides a global CDN distribution, automatic SSL certificates, and custom domain support.
+```bash
+dev_appserver.py app.yaml
+```
 
-### Task 5. Storage
+The development server is now running and listening for requests on port 8080.
 
-Cloud Storage for Firebase is a powerful, simple, and cost-effective object storage service built for Google scale. 
+View the results by clicking the **Web preview** > **Preview on port 8080**.
 
-The Firebase SDKs for Cloud Storage add Google security to file uploads and downloads for your Firebase apps, regardless of network quality.
+You'll see this in a new browser window:
 
-Firebase Storage is a scalable, durable, and highly available object storage service for storing user-generated content. 
+## Task 4. Make a change
 
-It is a great way to store images, videos, audio files, and other types of files in the cloud.
+You can leave the development server running while you develop your application. 
 
-### Task 6. Cloud Firestore
+The development server watches for changes in your source files and reloads them if necessary.
 
-Cloud Firestore is a flexible, scalable database for mobile, web, and server development from Firebase and Google Cloud. 
+Let's try it. 
 
-Firebase Cloud Firestore is a NoSQL document database. 
+Leave the development server running. 
 
-This means your data is stored in documents organized in collections. 
+We'll open another command line window, then edit `main.py` to change "Hello World!" to "Hello, Cruel World!".
 
-Documents can contain a variety of data types, including strings, numbers, arrays, objects, and geopoints. 
+Click the (**+**) next to your Cloud Shell tab to open a new command line session.
 
-Like Firebase Realtime Database, it keeps your data in sync across client apps through real time listeners and offers offline support for mobile and web so you can build responsive apps that work regardless of network latency or Internet connectivity. 
+Enter this command to go to the directory that contains the sample code:
 
-Cloud Firestore also offers seamless integration with other Firebase and Google Cloud products, including Cloud Functions.
+```bash
+cd python-docs-samples/appengine/standard_python3/hello_world
+```
 
-Firebase Cloud Firestore provides eventual consistency by default. 
+Enter the following to open main.py in nano to edit the content:
 
-This means that your data may not be immediately available to all clients after it is written. 
+```bash
+nano main.py
+```
 
-However, you can use transactions to ensure your data is always consistent.
+Change "Hello World!" to "Hello, Cruel World!".
 
-### Task 7. Emulator Suite
+Save the file with CTRL-S and exit with CTRL-X.
 
-The Emulator Suite consists of Firebase service emulators built to accurately mimic the behavior of Firebase services. 
+Reload the Hello World! Browser or click the **Web Preview** (web preview icon) > **Preview on port 8080** to see the results.
 
-This means you can connect your app directly to these emulators to perform integration testing or QA without touching production data.
+## Task 5. Deploy your app
 
-For example, you could connect your app to the Cloud Firestore emulator to safely read and write documents in testing. 
+To deploy your app to App Engine, run the following command from within the root directory of your application where the app.yaml file is located:
 
-These writes may trigger functions in the Cloud Functions emulator. 
+```bash
+gcloud app deploy
+```
 
-However your app will still continue to communicate with production Firebase services when emulators are not available or configured.
+Enter the number that represents your region: `us-west1`
 
-### Congratulations
+The App Engine application will then be created.
 
-In just 30 minutes, you developed a solid understanding of the Firebase console and the platform's key features. 
+Example output:
+
+```bash
+Creating App Engine application in project [qwiklabs-gcp-233dca09c0ab577b] and region [us-west1]....done.
+Services to deploy:
+
+descriptor:      [/home/gcpstaging8134_student/python-docs-samples/appengine/standard/hello_world/app.yaml]
+source:          [/home/gcpstaging8134_student/python-docs-samples/appengine/standard/hello_world]
+target project:  [qwiklabs-gcp-233dca09c0ab577b]
+target service:  [default]
+target version:  [20171117t072143]
+target url:      [https://qwiklabs-gcp-233dca09c0ab577b.appspot.com]
+
+Do you want to continue (Y/n)?
+```
+
+Enter **Y** when prompted to confirm the details and begin the deployment of service.
+
+Example output:
+
+```bash
+Beginning deployment of service [default]...
+Some files were skipped. Pass `--verbosity=info` to see which ones.
+You may also view the gcloud log file, found at
+[/tmp/tmp.dYC7xGu3oZ/logs/2017.11.17/07.18.27.372768.log].
+╔════════════════════════════════════════════════════════════╗
+╠═ Uploading 5 files to Google Cloud Storage                ═╣
+╚════════════════════════════════════════════════════════════File upload done.
+Updating service [default]...done.
+Waiting for operation [apps/qwiklabs-gcp-233dca09c0ab577b/operations/2e88ab76-33dc-4aed-93c4-fdd944a95ccf] to complete...done.
+Updating service [default]...done.
+Deployed service [default] to [https://qwiklabs-gcp-233dca09c0ab577b.appspot.com]
+
+You can stream logs from the command line by running:
+  $ gcloud app logs tail -s default
+
+To view your application in the web browser run:
+  $ gcloud app browse
+```
+
+> Note: If you receive an error as "Unable to retrieve P4SA" while deploying the app, then re-run the above command.
+
+## Task 6. View your application
+
+To launch your browser enter the following command, then click on the link it provides:
+
+```bash
+gcloud app browse
+```
+
+Example output (note that your link will be different):
+
+```bash
+Did not detect your browser. Go to this link to view your app:
+https://qwiklabs-gcp-233dca09c0ab577b.appspot.com
+```
+
+Your application is deployed and you can read the short message in your browser.
+
+## Congratulations

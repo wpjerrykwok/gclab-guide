@@ -1,158 +1,166 @@
----
-title: "Walkthrough... A Tour of Firebase (GSP1132)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+# Build a Chat Application using the PaLM 2 API on Cloud Run
 
-# A Tour of Firebase
-
-## GSP1132
+## GSP1201
 
 ### Overview
 
-If you are new to cloud computing or looking for an overview of Google Cloud and Firebase, you are in the right place. 
+This lab demonstrates how to create and deploy an AI-powered chat application using Cloud Run on Google Cloud. 
 
-Read on to learn about the specifics of this lab and areas that you will get hands-on practice with.
+The chat application is powered by the PaLM 2 Chat Bison Large Language Model's (LLM) (text-chat) APIs.
 
-#### What you'll learn
+You will leverage the APIs in a web application and deploy it to Cloud Run, using Cloud Build and Artifact Repository to store the container image of the application build. 
 
-In this lab, you will learn about the following:
+The application can be used as a starting point for web interfaces using the PaLM2 APIs.
 
-- The lab platform, and how to identify key features of a lab environment
+### What you will learn:
 
-- How to access the Firebase Cloud console with specific credentials
+In this lab, you will create a web application that runs on Cloud Run which utilizes APIs provided by the PaLM 2 for text (Chat Bison) Large Language Model (LLM) and surfaces them through a simple web interface deployed in the lab.
 
-- How to use the Firebase Cloud Navigation menu to identify types of Firebase services
+After this lab you will gain an understanding of how to build a web application which can utilize Large Language Models like the Chat Bison model to create engaging, conversation based interactions with end users who can asks questions and receive insightful responses through the chat application.
 
-#### Prerequisites
+To complete the lab you will:
 
-This is an introductory-level lab and the first lab you should take if you're unfamiliar with Firebase. 
+- Build a Docker image to run the application using Cloud Build
 
-If you are already experienced with Firebase Cloud console, consider taking one of the following labs:
+- Deploy a Cloud Run service that executes the application
 
-- Getting Started with Firebase Web
+- Review python code to understand how the application utilizes the Chat Bison model
 
-- Getting started with Firebase Authentication
+### Task 1. Environment Setup
 
-- Getting started with Cloud Firestore
+In order to deploy the Cloud Run application we will download the source from a Cloud Storage bucket.
 
-### Setup and Requirements
+Open a new **Cloud Shell** terminal and execute the following command.
 
-#### Understanding Regions and Zones
+```bash
+gsutil cp -R gs://spls/gsp1201/chat-flask-cloudrun .
+```
 
-Certain Compute Engine resources live in regions or zones. 
+Next, navigate to the folder of the project.
 
-A region is a specific geographical location where you can run your resources. 
+```bash
+cd chat-flask-cloudrun
+```
 
-Each region has one or more zones. 
+Set the region and project environment variables referenced by subsequent commands.
 
-For example, the `us-central1` region denotes a region in the Central United States that has zones `us-central1-a`, `us-central1-b`, `us-central1-c`, and `us-central1-f`.
+```bash
+export PROJECT_ID=qwiklabs-gcp-03-9d06f7384b3e
+export REGION=us-central1
+```
 
-Regions|Zones
-Western US|us-west1-a, us-west1-b
-Central US|us-central1-a, us-central1-b, us-central1-d, us-central1-f
-Eastern US|us-east1-b, us-east1-c, us-east1-d
-Western Europe|europe-west1-b, europe-west1-c, europe-west1-d
-Eastern Asia|asia-east1-a, asia-east1-b, asia-east1-c
+### Task 2. Build a Docker image
 
-Resources that live in a zone are referred to as zonal resources. 
+Next, you will build a Docker image for the application and push it to Artifact Registry. 
 
-irtual machine Instances and persistent disks live in a zone. 
+Once built and stored you will reference the container image to deploy the application to Cloud Run.
 
-To attach a persistent disk to a virtual machine instance, both resources must be in the same zone. 
+Set environment variables required.
 
-Similarly, if you want to assign a static IP address to an instance, the instance must be in the same region as the static IP.
+```bash
+export AR_REPO='chat-app-repo'
+export SERVICE_NAME='chat-flask-app'
+```
 
-### Task 1. Initialize the demo project
+Next, run the following command to create the Artifact Repository:
 
-The Firebase suite of tools is linked to a Google Cloud project, so you will see a project identifier and project name in the Firebase information.
+```bash
+gcloud artifacts repositories create "$AR_REPO" --location="$REGION" --repository-format=Docker
+```
 
-Firebase projects are accessed via the Firebase console. Take a moment to open the Firebase console in a new Incognito window.
+Configure Docker authentication and submit the container image build job to Cloud Build.
 
-The first step to access a Firebase project is to select or create a project. Firebase provides a demo project for users to experience the environment.
+```bash
+gcloud builds submit \
+  --tag "$REGION-docker.pkg.dev/$PROJECT_ID/$AR_REPO/$SERVICE_NAME"
+```
 
-### Task 2. Firebase console
+To verify if the image is pushed to the Artifact Registry, go to the Artifact Registry page. **Left Menu** > **Artifact Registry**. Confirm the `chat-app-repo` is available.
 
-In the Firebase user interface, the project **Overview** > **Project** settings menu option will display information about the project. 
+### Task 3. Deploy the application to Cloud Run
 
-A Firebase Project has a name, number, and ID. 
+Now that the application has been downloaded and built via Cloud Build, you will now deploy and test it on Cloud Run.
 
-These identifiers are frequently used when interacting with Google Cloud services. 
+In Cloud Shell, run the following command:
 
-You are working with one project to get experience with a specific service or feature of Firebase.
+```bash
+gcloud run deploy "$SERVICE_NAME" \
+  --port=8080 \
+  --image="$REGION-docker.pkg.dev/$PROJECT_ID/$AR_REPO/$SERVICE_NAME:latest" \ 
+  --allow-unauthenticated \
+  --region=$REGION \
+  --platform=managed \
+  --project=$PROJECT_ID \
+  --set-env-vars=GCP_PROJECT=$PROJECT_ID,GCP_REGION=$REGION
+```
 
-From the project setting page, you will also see any apps that have been registered under the current project.
+> Note: This step will take a few minutes to complete.
 
-Firebase includes support for a number of different language runtimes including:
+To launch the application, click the service URL provided in the output of the last command:
 
-- iOS
-- Android
-- Web
-- Unity
-- Flutter
+Enter the following query into the input text box and click **Send**. You will receive a response generated by the PaLM 2 Chat Bison API in the output text box below the prompt input.
 
-### Task 3. Authentication
+### Task 4. Explore the python code
 
-Firebase Authentication provides backend services, easy-to-use SDKs, and ready-made UI libraries to authenticate users to your app. 
+To understand more about how the application utilizes the PaLM2 Chat Bison API, you will briefly explore the code used by the app.
 
-It supports authentication using passwords, phone numbers, popular federated identity providers like Google, Facebook and Twitter, and more.
-
-### Task 4. Hosting
-
-Firebase Hosting is production-grade web content hosting for developers. 
-
-With a single command, you can quickly deploy web apps and serve both static and dynamic content to a global CDN (content delivery network). 
-
-You can also pair Firebase Hosting with Cloud Functions or Cloud Run to build and host microservices on Firebase.
-
-Firebase Hosting can be used to deploy static and dynamic web content. 
-
-It provides a global CDN distribution, automatic SSL certificates, and custom domain support.
-
-### Task 5. Storage
-
-Cloud Storage for Firebase is a powerful, simple, and cost-effective object storage service built for Google scale. 
-
-The Firebase SDKs for Cloud Storage add Google security to file uploads and downloads for your Firebase apps, regardless of network quality.
-
-Firebase Storage is a scalable, durable, and highly available object storage service for storing user-generated content. 
-
-It is a great way to store images, videos, audio files, and other types of files in the cloud.
-
-### Task 6. Cloud Firestore
-
-Cloud Firestore is a flexible, scalable database for mobile, web, and server development from Firebase and Google Cloud. 
-
-Firebase Cloud Firestore is a NoSQL document database. 
-
-This means your data is stored in documents organized in collections. 
-
-Documents can contain a variety of data types, including strings, numbers, arrays, objects, and geopoints. 
-
-Like Firebase Realtime Database, it keeps your data in sync across client apps through real time listeners and offers offline support for mobile and web so you can build responsive apps that work regardless of network latency or Internet connectivity. 
-
-Cloud Firestore also offers seamless integration with other Firebase and Google Cloud products, including Cloud Functions.
-
-Firebase Cloud Firestore provides eventual consistency by default. 
-
-This means that your data may not be immediately available to all clients after it is written. 
-
-However, you can use transactions to ensure your data is always consistent.
-
-### Task 7. Emulator Suite
-
-The Emulator Suite consists of Firebase service emulators built to accurately mimic the behavior of Firebase services. 
-
-This means you can connect your app directly to these emulators to perform integration testing or QA without touching production data.
-
-For example, you could connect your app to the Cloud Firestore emulator to safely read and write documents in testing. 
-
-These writes may trigger functions in the Cloud Functions emulator. 
-
-However your app will still continue to communicate with production Firebase services when emulators are not available or configured.
+In **Cloud Shell**, click **Open Editor** which will provision a new Cloud Shell Editor for you to browse the code with.
+
+Expand the folder `chat-flask-app` and select `app.py` to begin exploring the code.
+
+There are a few python methods in this file which are important to note.
+
+- `create_session`: this method creates a new session with Vertex AI using the `chat-bison@001` model. It is used by the route `/palm2` which you will observe further to establish a new chat session.
+
+```py
+def create_session():
+    chat_model = ChatModel.from_pretrained("chat-bison@001")
+    chat = chat_model.start_chat()
+    return chat
+```
+
+- `response`: this method defines sensible defaults for parameters used to by the PaLM2 APIs such as the `temperature`, `max_output_tokens`, `top_p` and `top_k` parameters and submits the prompt to the chat bison model using the session created by the `create_session` method to retrieve a response.
+  
+```py
+def response(chat, message):
+    parameters = {
+        "temperature": 0.2,
+        "max_output_tokens": 256,
+        "top_p": 0.8,
+        "top_k": 40
+    }
+    result = chat.send_message(message, **parameters)
+    return result.text
+```
+
+- `index` and `vertex_palm`: the `index` and `vertex_palm` methods define routes for the application's API. The `index` method loads the `index.html` page when a user loads the application and the `vertex_palm` method submits the user's prompt collected from the `index.html` page to the API and returns the results in JSON format.
+
+```py
+@app.route('/')
+def index():
+    ###
+    return render_template('index.html')
+
+@app.route('/palm2', methods=['GET', 'POST'])
+def vertex_palm():
+    user_input = ""
+    if request.method == 'GET':
+        user_input = request.args.get('user_input')
+    else:
+        user_input = request.form['user_input']
+    logger.log(f"Starting chat session...")
+    chat_model = create_session()
+    logger.log(f"Chat Session created")
+    content = response(chat_model,user_input)
+    return jsonify(content=content)
+```
+
+The `index.html` file includes inline JavaScript to read the results from the form submission when a user clicks **Send** and updates the UI with the response of the PaLM 2 API call.
 
 ### Congratulations
 
-In just 30 minutes, you developed a solid understanding of the Firebase console and the platform's key features. 
+You have now completed the lab! 
+
+In this lab, you learned how to build and deploy a simple web application using Cloud Build and Artifact Registry. 
+
+The application is deployed to Cloud Run and utilizes the PaLM 2 Chat Bison model to respond to end user queries in order to create a chat based application that allows end users to ask questions and recieve responses in a web UI.

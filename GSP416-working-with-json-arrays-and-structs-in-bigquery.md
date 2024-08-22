@@ -1,11 +1,3 @@
----
-title: "Walkthrough... Working with JSON, Arrays, and Structs in BigQuery (GSP416)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
-
 # Working with JSON, Arrays, and Structs in BigQuery
 
 ## GSP416

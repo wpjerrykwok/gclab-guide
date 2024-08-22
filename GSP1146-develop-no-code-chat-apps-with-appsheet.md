@@ -1,273 +1,312 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+Develop No-Code Chat Apps with AppSheet
+experiment
+Lab
+schedule
+1 hour
+universal_currency_alt
+No cost
+show_chart
+Introductory
+info
+This lab may incorporate AI tools to support your learning.
+GSP1146
+Google Cloud self-paced labs logo
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
+Overview
+This lab provides an introduction to creating no-code Chat apps. Chat apps are web applications or services that run in Google Chat. Creating a Chat app with AppSheet lets you interact directly with the app in Google Chat rather than opening it in a separate window.
 
-## GSP087
+In this lab, you use AppSheet to create a basic application to report and manage ATM issues. You start by copying a simple app that uses a spreadsheet as its data source. You then add a chat component so you can interact with the app directly in Google Chat.
 
-### Overview
+Scenario: Operations analyst at a bank
+You’re an operations analyst at a bank working on a team with five ATM technicians. You are responsible for coordinating maintenance for several ATMs in the area. Historically, this process relied heavily on email and paper documents.
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+You have developed a no-code app using AppSheet to better manage ATM maintenance and technician dispatching. The ATM technicians often use Google Chat to communicate with each other. You would like to create a Chat component for your app, so they can easily use its core features without leaving Google Chat.
 
-#### Application architecture
+What you'll learn
+Add a chat component to an existing AppSheet app
+Create slash commands
+Add automations to an app
+Use an app in Google Chat
+Prerequisites (optional)
+It's recommended you complete the Google AppSheet: Getting Started lab before this one. This can be followed up by taking the Building No-Code Apps with AppSheet: Foundations course either before or after this lab.
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+Setup and requirements
+Before you click the Start Lab button
+Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click Start Lab, shows how long lab resources will be made available to you.
 
-The script reports a numeric value to a Cloud monitoring metric.
+This hands-on lab lets you do the lab activities yourself in a real cloud environment, not in a simulation or demo environment. It does so by giving you new, temporary credentials that you use to sign in and access AppSheet for the duration of the lab.
 
-You do not need to know Node.js or JavaScript for this lab.
+What you need
+To complete this lab, you need:
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+Access to a standard internet browser (Chrome browser recommended).
+Time to complete the lab.
+Make sure you are signed into Google Cloud Skills Boost using an incognito window.
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+When ready, click start lab button.
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+A new panel will appear with the temporary credentials that you must use for this lab.
 
-The application includes the following components:
+If you need to pay for the lab, a pop-up will open for you to select your payment method.
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+Note your lab credentials. You will use them to sign in to AppSheet for this lab.
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+Note: If you use other credentials, you will get errors or incur charges.
+Click Open AppSheet.
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+Click to sign in with Google.
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
+Sign in with Google
 
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
+In the Sign in with Google dialog, enter the Username provided for the lab and click Next.
 
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
+Note: If you see other accounts listed, click Use another account, enter the credentials provided for this lab, then click Next.
+Enter the password provided for this lab and click Next.
 
-#### Objectives
+Click I Understand to accept the terms.
 
-In this lab, you will learn how to perform the following tasks:
+On the AppSheet consent page, click Allow. This allows AppSheet to access the Google Drive folders associated with your Google Cloud Skills Boost account.
 
-- Deploy an autoscaling Compute Engine instance group.
+Sign in with Google - provide consent
 
-- Create a custom metric used to scale the instance group.
+You are now signed in to AppSheet.
 
-- Use the Cloud Console to visualize the custom metric and instance group size.
+My apps - create a new app
 
-### Task 1. Creating the application
+Click on the X in the top right corner of the Tell us about you so we can make better recommendations dialog to view the AppSheet MyApps page.
 
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
+The MyApps page is empty since you do not yet have any apps.
 
-#### Uploading the script files to Cloud Storage
+Task 1. Create your app
+When developing apps, it's common to incrementally add new features. In this task, you copy an existing ATM Maintenance app, and in the subsequent tasks you extend its functionality.
 
-During autoscaling, the instance group will need to create new Compute Engine instances.
+Copy a template app to your AppSheet account
+After you've logged into AppSheet, open the ATM Maintenance app in a new browser tab.
 
-When it does, it creates the instances based on an instance template.
+In the left navigation menu, click Copy app (copy).
 
-Each instance needs a startup script.
+In the Copy app form, for App name, type ATM Maintenance Tracker, and leave the remaining settings as their defaults.
 
-Therefore, the template needs a way to reference the startup script.
+Click Copy app.
 
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
+AppSheet creates the app and copies the spreadsheet that is used by the app to the /appsheet/data/ATMMaintenanceTracker-nnnnnnn folder within your My Drive folder in Google Drive.
 
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
+Your app is set up with the original app's data source. Now you can keep building the app's functionality. You can also access the app from the My apps page in the AppSheet UI under Apps.
 
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
+Preview your app
+The AppSheet editor has 3 main areas: the navigation bar, main panel, and app preview.
 
-### Task 2. Create a bucket
+copy
+The app preview shows what the latest version of your app will look like on a phone oriented vertically.
 
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
+In the app preview panel, scroll through the New Ticket form.
 
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
+The New Ticket form lets you create a new ticket that is automatically assigned to a technician according to the Symptom you select.
 
-Accept the default values then click **Create**.
+Click Cancel to navigate away from this view and explore the app further. Once you understand how the app functions overall, proceed to the next step.
 
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
+Open the Chat app builder
+To open the Chat app builder, select Chat apps (chat icon) in the left navigation menu.
 
-When the bucket is created, the **Bucket details** page opens.
+Click Create.
 
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
+In the Enable card, click Next to automatically configure your project.
 
-```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
-```
+By default, Chat apps in AppSheet are created in the automatic configuration mode which provides you with a simple way to configure and publish your labs. To learn more about this one-click publishing flow, see Configure Chat apps with AppSheet.
 
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
+Note: It may take a few minutes before the app is fully configured. Do not reload the page.
+Click Check my progress to verify the objective.
+Create the app.
 
-#### Understanding the code components
+Task 2. Customize your app
+When you add an app to a conversation or a space, the app sends an initial message. You can customize the Chat app menu, called a card, that is sent to a user when the app is installed or @mentioned. In this task, you customize the first message, add actions, and configure the Chat API in the Google Cloud console.
 
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
+Customize the first message
+In the Customize card, click First message to expand the section.
 
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
+AppSheet automatically populates the message text and app views.
 
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
+For message text, change the greeting to: Welcome to the ATM Maintenance Tracker app. What do you want to do today?
 
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
+In the list of Chat card menu, click My Tickets, and then select Issues Reported By Me in the dropdown to change the chat card.
 
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
+To remove the Manage Techs view, click Delete (delete app view).
 
-### Task 3. Creating an instance template
+Note: The Unsupported app view selected warning indicates that you cannot access that app view within Google Chat. The option will still appear in the Chat card menu, but selecting it will open the app in a new tab.
+Click Save at the top of your AppSheet window.
+Create a slash command
+In the Actions section, click + New action.
 
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
+Select Slash command: Open app view from the list of options.
 
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
+Slash commands enable users to simply type "/" in the message line to reveal a list of functions offered by available bots. They make it much easier for you to discover and use the available Chat app features.
 
-Click **Create Instance Template** at the top of the page.
+Select Issues Reported By Me from the App View dropdown.
 
-Name the instance template `autoscaling-instance01`.
+Type /myissues for the Name.
 
-Set **Location** as **Global**.
+In the Description field, type Lists tickets that include your email address.
 
-Scroll down, click **Advanced options**.
+Click Next.
 
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
 
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
+Which of the following is NOT an option in the Customize section of the Chat apps editor?
 
-Click **Create**.
+Replies
 
-### Task 4. Creating the instance group
+First message
 
-In the left pane, click **Instance groups**.
+Actions
 
-Click **Create instance group** at the top of the page.
+Search
 
-**Name**: `autoscaling-instance-group-1`.
+Task 3. Publish your app
+In this task, you run a deployment check, resolve a warning, and publish your app.
 
-For **Instance template**, select the instance template you just created.
+Perform a deployment check
+In the Test card, click Go to deployment settings to open the Deploy tab in the AppSheet UI.
 
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
+If the deployment check does not begin automatically, click Run Deployment Check.
 
-Set **Autoscaling mode** to **Off: do not autoscale**.
+The output of the deployment check lists any errors or warnings that you should fix, before deploying the app.
 
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
+Click App description.
 
-Click **Create**.
+The section expands to provide more details on the warning.
 
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
+Click Continue editing so you can address the App description warning before publishing your app.
 
-### Task 5. Verifying that the instance group has been created
+Fix the App description warning
+In the left navigation menu, click Settings (settings).
 
-Wait to see the green check mark next to the new instance group you just created.
+In the Information tab, in the App Properties section, click the dropdown for Function.
 
-It might take the startup script several minutes to complete installation and begin reporting values.
+Select Maintenance from the list of options.
 
-Click Refresh if it seems to be taking more than a few minutes.
+Click the dropdown for Industry and select Financial Services.
 
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
+Click Save.
 
-### Task 6. Verifying that the Node.js script is running
+Deploy the app
+In the left navigation menu, click Manage (manage) to return to the Deploy options.
 
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
+In the Deployment Check section, click Run deployment check to rerun the process.
 
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
+Notice the App Description has changed from WARNING to PASSED.
 
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
+Click Move app to deployed state.
 
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
+Task 4. Test your app
+Spaces in Google Chat are central places where people can share files, assign tasks, and stay connected. You can directly message an app or add it to spaces and conversations. In this task, you test your app in Google Chat by creating a space, adding your app to the space, and using the app.
 
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
+Add the app to a space
+In a new incognito tab, open Google Chat.
+If a modal appears, click Get Started, and then click X to close the tutorial.
+In the lower left pane, in Spaces, click Create or find a space, and then click Create a space.
+Type a space name, and then click Create.
+Click View apps, select the ATM Maintenance Tracker app from the list, and then click Add.
+Use the app in a space
+To create a new ticket, click Open in app option next to All Tickets and then click New Ticket.
 
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
+A dialog will appear.
 
-Add `"nodeapp"` as line 3, so the code looks similar to this:
+Enter any information that you like in the First Name and Last Name fields.
 
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
-```
+For ATM ID, type ABC123.
 
-Click **Run query**.
+For Email, use the lab email address you used to log into AppSheet.
 
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
+For the Symptom field, select Card reader not working from the dropdown.
 
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
+Select the N (No) option for Resolved.
 
-### Task 7. Configure autoscaling for the instance groups
+Leave the other fields as their defaults, and then click Save.
 
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
+To view your updated ticket list, type /myissues in the reply area, and then click enter.
 
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
+Click Check my progress to verify the objective.
+Test the app.
 
-Click the `autoscaling-instance-group-1` group.
+Task 5. Build an automation
+Automations let you trigger events based on Chat app interactions like adding or removing a Chat app in a space. You can also send messages and app views to Chat spaces based on Chat interactions. In this task, you create an automation of your own.
 
-Click **Edit**.
+Create a custom event
+Return to your AppSheet tab and select Chat apps (chat icon) in the left navigation menu to open the Chat app builder.
 
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
+If you've exited the AppSheet tab, click My apps, and select ATM Maintenance Tracker from the list.
 
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
+Click the Customize card in the Chat app editor.
 
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
+Click + New action, and then select Build my own...
 
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
+The automation page in the AppSheet editor will open in the same tab.
 
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
+Click Configure event, and then click Create a custom event.
 
-- Click **Apply**.
+In the Settings panel, provide the following information:
 
-- **Utilization target**: `150`
+Field	Value
+Event name	New ticket
+Data change type	check only Adds
+Table	Tickets
+Create a custom step
+In the main panel, click + Add a step, and then select Create a custom step.
 
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
+Click New step to open the Settings for the custom step you just created.
 
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
+In the Settings panel, click chat icon Send a chat message.
 
-- **Utilization target type**: `Gauge`. Click **Select**.
+For Message Content, choose the Select chat spaces option.
 
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
+For Space ID(s), click Add, and then select the space you created in the previous task.
 
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
+In the Message Text box, type the message: You have created a new ticket.
 
-Click **Save**.
+At the top right of the page, click Save to update your app.
 
-### Task 8. Watching the instance group perform autoscaling
+Test your automation
+Navigate back to Google Chat and open the space in Google Chat that you created in the previous task.
 
-The Node.js script varies the custom metric values it reports from each instance over time.
+Click New Ticket in the ATM Maintenance Tracker App.
 
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
+In the First Name box, type Freeda.
 
-If the value goes down, the instance group detects this and scales down by removing instances.
+Provide the information of your choosing for ATM ID and Symptom.
 
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
+Click Save.
 
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
+Notice how the app sends a confirmation message.
 
-- In the left pane, click **Instance groups**.
+Click Check my progress to verify the objective.
+Build an automation.
 
-- Click the `builtin-igm` instance group in the list.
+Delete your app
+Now that you’ve successfully tested your app, you can delete it, marking the completion of the software development lifecycle.
 
-- Click the **Monitoring** tab.
+In the left navigation menu, click Manage (manage).
 
-- Enable **Auto Refresh**.
+Select Collaborate & Publish from the list of options.
 
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
-
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
-
-Hover your mouse over the graphs to see more details.
-
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
-
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
-
-### Task 9. Autoscaling example
-
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
-
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
-
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
-
-While your autoscaling starts up, read through this graph to understand what will be happening.
-
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
-
-### Congratulations
+Click Delete App.
 
 Congratulations!
+You’ve successfully created your first no-code chat app. You learned how to:
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+Add a chat component to an existing app
+Create slash commands
+Add automations to an app
+Use an app in Google Chat
+Take your next lab
+Google AppSheet: Getting Started
+Connect and Configure Data for your AppSheet App
+Next steps / Learn more
+Check out the following for more information on No-Code Chat apps:
 
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+Review the Troubleshoot Chat apps resources for tips to resolve issues with Chat app configurations
+Read the AppSheet Chat apps FAQ to find answers to your questions about AppSheet Chat apps
+Google Cloud training and certification
+...helps you make the most of Google Cloud technologies. Our classes include technical skills and best practices to help you get up to speed quickly and continue your learning journey. We offer fundamental to advanced level training, with on-demand, live, and virtual options to suit your busy schedule. Certifications help you validate and prove your skill and expertise in Google Cloud technologies.
+
+Manual Last Updated July 19, 2024
+
+Lab Last Tested July 19, 2024

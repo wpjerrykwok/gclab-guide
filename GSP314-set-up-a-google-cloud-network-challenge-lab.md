@@ -1,4 +1,6 @@
-Set Up a Google Cloud Network: Challenge Lab experiment Lab schedule 1 hour 30 minutes universal_currency_alt 5 Credits show_chart Intermediate info This lab may incorporate AI tools to support your learning. GSP314 Google Cloud self-paced labs logo
+# Set Up a Google Cloud Network: Challenge Lab
+
+## GSP314
 
 Overview In a challenge lab you’re given a scenario and a set of tasks. Instead of following step-by-step instructions, you will use the skills learned from the labs in the course to figure out how to complete the tasks on your own! An automated scoring system (shown on this page) will provide feedback on whether you have completed your tasks correctly.
 

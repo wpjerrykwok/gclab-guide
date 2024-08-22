@@ -1,273 +1,326 @@
----
-title: "Walkthrough... Autoscaling an Instance Group with Custom Cloud Monitoring Metrics (GSP087)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+Building Virtual Agent Fulfillment
+experiment
+Lab
+schedule
+1 hour 30 minutes
+universal_currency_alt
+No cost
+show_chart
+Introductory
+info
+This lab may incorporate AI tools to support your learning.
+GSP792
+Google Cloud self-paced labs logo
 
-# Autoscaling an Instance Group with Custom Cloud Monitoring Metrics
+Overview
+In this lab, you will continue working on your Pigeon Travel virtual agent created in the Design Conversational Flows for your Agent and add context as well as set up fulfillment to look up and store reservations entries in Firestore.
 
-## GSP087
+Note: You will need the exported agent zip file from the Design Conversational Flows for your Agent lab to continue with this lab. Otherwise, you will have to build all the intents and entities in Design Conversational Flows for your Agent lab from scratch before proceeding with the steps in this lab.
+What you'll learn
+In this lab you will perform the following tasks:
 
-### Overview
+Create a Firestore Collection
+Setup fulfillment as Cloud Functions code for the agent to be able to lookup and change the name on the reservation.
+Setup and requirements
+Before you click the Start Lab button
+Read these instructions. Labs are timed and you cannot pause them. The timer, which starts when you click Start Lab, shows how long Google Cloud resources will be made available to you.
 
-In this lab you will create a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
+This hands-on lab lets you do the lab activities yourself in a real cloud environment, not in a simulation or demo environment. It does so by giving you new, temporary credentials that you use to sign in and access Google Cloud for the duration of the lab.
 
-#### Application architecture
+To complete this lab, you need:
 
-The autoscaling application uses a Node.js script installed on Compute Engine instances.
+Access to a standard internet browser (Chrome browser recommended).
+Note: Use an Incognito or private browser window to run this lab. This prevents any conflicts between your personal account and the Student account, which may cause extra charges incurred to your personal account.
+Time to complete the lab---remember, once you start, you cannot pause a lab.
+Note: If you already have your own personal Google Cloud account or project, do not use it for this lab to avoid extra charges to your account.
+How to start your lab and sign in to the Google Cloud console
+Click the Start Lab button. If you need to pay for the lab, a pop-up opens for you to select your payment method. On the left is the Lab Details panel with the following:
 
-The script reports a numeric value to a Cloud monitoring metric.
+The Open Google Cloud console button
+Time remaining
+The temporary credentials that you must use for this lab
+Other information, if needed, to step through this lab
+Click Open Google Cloud console (or right-click and select Open Link in Incognito Window if you are running the Chrome browser).
 
-You do not need to know Node.js or JavaScript for this lab.
+The lab spins up resources, and then opens another tab that shows the Sign in page.
 
-In response to the value of the metric, the application autoscales the Compute Engine instance group up or down as needed.
+Tip: Arrange the tabs in separate windows, side-by-side.
 
-The Node.js script is used to seed a custom metric with values that the instance group can respond to.
+Note: If you see the Choose an account dialog, click Use Another Account.
+If necessary, copy the Username below and paste it into the Sign in dialog.
 
-In a production environment, you would base autoscaling on a metric that is relevant to your use case.
+student-01-39ad23ae18b9@qwiklabs.net
+Copied!
+You can also find the Username in the Lab Details panel.
 
-The application includes the following components:
+Click Next.
 
-1. **Compute Engine instance template** - A template used to create each instance in the instance group.
+Copy the Password below and paste it into the Welcome dialog.
 
-2. **Cloud Storage** - A bucket used to host the startup script and other script files.
+62932nfnx8Sb
+Copied!
+You can also find the Password in the Lab Details panel.
 
-3. **Compute Engine startup script** - A startup script that installs the necessary code components on each instance. The startup script is installed and started automatically when an instance starts. When the startup script runs, it in turn installs and starts code on the instance that writes values to the Cloud monitoring custom metric.
+Click Next.
 
-4. **Compute Engine instance group** - An instance group that autoscales based on the Cloud monitoring metric values.
+Important: You must use the credentials the lab provides you. Do not use your Google Cloud account credentials.
+Note: Using your own Google Cloud account for this lab may incur extra charges.
+Click through the subsequent pages:
 
-5. **Compute Engine instances** - A variable number of Compute Engine instances.
+Accept the terms and conditions.
+Do not add recovery options or two-factor authentication (because this is a temporary account).
+Do not sign up for free trials.
+After a few moments, the Google Cloud console opens in this tab.
 
-6. **Custom Cloud Monitoring metric** - A custom monitoring metric used as the input value for Compute Engine instance group autoscaling.
+Note: To view a menu with a list of Google Cloud products and services, click the Navigation menu at the top-left. Navigation menu icon
+Task 1. Enable the API
+In the Cloud Console go to Navigation menu (Navigation menu icon) > APIs & Services > Enable APIs and Services.
 
-#### Objectives
+Click + Enable APIs and Services.
 
-In this lab, you will learn how to perform the following tasks:
+Search for Dialogflow.
 
-- Deploy an autoscaling Compute Engine instance group.
+Click the Dialogflow API tile. If the API is not enabled, click Enable.
 
-- Create a custom metric used to scale the instance group.
+Search for Cloud function.
 
-- Use the Cloud Console to visualize the custom metric and instance group size.
+Click on the Cloud function API and if it is already Enabled, click Manage.
 
-### Task 1. Creating the application
+Click Disable API.
 
-Creating the autoscaling application requires downloading the necessary code components, creating a managed instance group, and configuring autoscaling for the managed instance group.
+If you are asked to confirm, click Disable.
 
-#### Uploading the script files to Cloud Storage
+Click Enable.
 
-During autoscaling, the instance group will need to create new Compute Engine instances.
+When the API has been enabled again, the page will show the option to disable.
 
-When it does, it creates the instances based on an instance template.
+Set up IAM permissions
+From the Navigation menu (Navigation menu icon), go to IAM & admin > IAM.
 
-Each instance needs a startup script.
+Edit the permissions for your Google Cloud Functions Service Agent by locating the service agent under the IAM list and selecting the pencil icon. The service account will have the Domain @gcf-admin-robot.iam.gserviceaccount.com.
 
-Therefore, the template needs a way to reference the startup script.
+If you are unable to see any service account click the checkbox Include Google-provided role grants.
 
-Compute Engine supports using Cloud Storage buckets as a source for your startup script.
+Click add another role in the dialog and then select Artifact Registry > Artifact Registry Reader role.
 
-In this section, you will make a copy of the startup script and application files for a sample application used by this lab that pushes a pattern of data into a custom Cloud logging metric that you can then use to configure as the metric that controls the autoscaling behavior for an autoscaling group.
+Click Save.
 
-> Note: There is a pre-existing instance template and group that has been created automatically by the lab that is already running.
-> Autoscaling requires at least 30 minutes to demonstrate both scale-up and scale-down behavior, and you will examine this group later to see how scaling is controlled by the variations in the custom metric values generated by the custom metric scripts.
+Task 2. Create your Dialogflow agent
+You'll call your agent "pigeon-travel".
 
-### Task 2. Create a bucket
+Go to the Dialogflow Console.
 
-In the Cloud Console, from the **Navigation menu** select **Cloud Storage** > **Buckets**, then click **Create**.
+Click Sign in with the Google button, and make sure to select the lab credentials you logged into this lab with. Then click Allow.
 
-Give your bucket a unique name, but don't use a name you might want to use in another project. For details about how to name a bucket, see the bucket naming guidelines. You can use your Project ID for the bucket. This bucket will be referenced as `YOUR_BUCKET` throughout the lab.
+Uncheck the email preferences and check the Terms of Service. Click on Accept.
 
-Accept the default values then click **Create**.
+In the left menu, click Create agent.
 
-Click **Confirm** for `Public access will be prevented` pop-up if prompted.
+Now add the agent information as you see in the screenshot below:
 
-When the bucket is created, the **Bucket details** page opens.
+Agent Name: pigeon-travel
+Default Time Zone: America/Denver
+Google Project: use your lab Project ID
+Click Create.
+Click Check my progress to verify the objective.
+Create the Dialogflow agent
 
-Next, run the following command in Cloud Shell to copy the startup script files from the lab default Cloud Storage bucket to your Cloud Storage bucket. Remember to replace `<YOUR BUCKET>` with the name of the bucket you just made:
+Task 3. Import your Dialogflow agent
+In the previous lab, you exported the Dialogflow agent you built. You will now import it back in and continue building it.
 
-```bash
-gsutil cp -r gs://spls/gsp087/* gs://<YOUR BUCKET>
-```
+This will create a new virtual agent project. Now you'll want to import the work you've already done.
 
-After you upload the scripts, click **Refresh** on the **Bucket details** page. Your bucket should list the added files.
+If you do not have exported files to use, use this file:
+https://storage.cloud.google.com/qwiklabs-resources-ccai-quest/pigeon-travel-gsp-792.zip
+Copied!
+Download the file to your local workstation.
+Click on the settings gear icon settings gear icon next to your agent name.
 
-#### Understanding the code components
+Select the Export and import tab.
 
-- `Startup.sh` - A shell script that installs the necessary components to each Compute Engine instance as the instance is added to the managed instance group.
+Export and Import tabbed page
 
-- `writeToCustomMetric.js` - A Node.js snippet that creates a custom monitoring metric whose value triggers scaling. To emulate real-world metric values, this script varies the value over time. In a production deployment, you replace this script with custom code that reports the monitoring metric that you're interested in, such as a processing queue value.
+Click Import from zip.
 
-- `Config.json` - A Node.js config file that specifies the values for the custom monitoring metric and used in `writeToCustomMetric.js`.
+Click Select file and navigate to the zip file which contains the configuration of your virtual agent. You can alternatively drag and drop the file if you prefer.
 
-- `Package.json` - A Node.js package file that specifies standard installation and dependencies for `writeToCustomMetric.js`.
+Type in the word "IMPORT" in all caps to enable the import button and click Import.
 
-- `writeToCustomMetric.sh` - A shell script that continuously runs the `writeToCustomMetric.js` program on each Compute Engine instance.
+Upload agent page
 
-### Task 3. Creating an instance template
+Click Done to close out the upload window once the import is complete.
+Your existing configuration has been imported into your new agent project.
 
-Now create a template for the instances that are created in the instance group that will use autoscaling. As part of the template, you specify the location (in Cloud Storage) of the startup script that should run when the instance starts.
+Click Check my progress to verify the objective.
+Import your Dialogflow agent
 
-In the Cloud Console, click **Navigation menu** > **Compute Engine** > **Instance templates**.
+Task 4. Set up fulfillment using Cloud Functions to look up reservations in Firestore
+So far the agent does a good job communicating with a customer to get their information including a reservation number. However, the information collected is not checked or recorded anywhere to enable further possible action. In this section, you will set up fulfillment by adding Node.js code and deploy it as a Cloud Function for your agent to look up the current reservation and add the change.
 
-Click **Create Instance Template** at the top of the page.
+Configure Firestore
+In the Console go to Navigation menu > Databases > Firestore.
 
-Name the instance template `autoscaling-instance01`.
+Click Create Database.
 
-Set **Location** as **Global**.
+For Select your Firestore mode, Choose Native mode (recommended) and click Continue.
 
-Scroll down, click **Advanced options**.
+For the location select Multi-region and then choose nam5 (United States) for the multi-region.
 
-In the **Metadata** section of the **Management** tab, enter these metadata keys and values, clicking the **+ Add item** button to add each one. Remember to substitute your bucket name for the `[YOUR_BUCKET_NAME]` placeholder:
+Click Create database. Once it completes you will have the ability to create a new collection.
 
-Key|Value
----|---
-startup-script-url|`gs://[YOUR_BUCKET_NAME]/startup.sh`
-gcs-bucket|`gs://[YOUR_BUCKET_NAME]`
+Click Start collection.
 
-Click **Create**.
+Fill in the details to replicate the details below, then click Save.
 
-### Task 4. Creating the instance group
+Collection ID: reservations
 
-In the left pane, click **Instance groups**.
+Document ID: 100
 
-Click **Create instance group** at the top of the page.
+Field name: fname
 
-**Name**: `autoscaling-instance-group-1`.
+Field type: string
 
-For **Instance template**, select the instance template you just created.
+Field value: Isabel
 
-For **Location**, select **Single Zone** and use `us-west1` and `us-west1-b` for the region and zone, respectively.
+Then click the Add a Field (+) button to add another:
+Field name: lname
+Field type: string
+Field value: Costa
+Then click the Add a Field (+) button to add another:
+Field name: newname
+Field type: string
+Field value:
+You have now added your first document to a Firestore collection.
 
-Set **Autoscaling mode** to **Off: do not autoscale**.
+Firestore Document IDs Best Practice
 
-You'll edit the autoscaling setting after the instance group has been created. Leave the other settings at their default values.
+Avoid the document IDs . and ...
 
-Click **Create**.
+Avoid using / forward slashes in document IDs.
 
-> Note: You can ignore the `Autoscaling is turned off. The number of instances in the group won't change automatically. The autoscaling configuration is preserved.` warning next to your instance group.
+Do not use monotonically increasing document IDs such as:
 
-### Task 5. Verifying that the instance group has been created
+Customer1, Customer2, Customer3, ...
+Product 1, Product 2, Product 3, ...
+Such sequential IDs can lead to hotspots that impact latency.
 
-Wait to see the green check mark next to the new instance group you just created.
+Dialogflow Fulfillment
+Navigate to the Diaglflow console and click on Fulfillment in the left menu. It may take a few minutes for the resources to be provisioned.
 
-It might take the startup script several minutes to complete installation and begin reporting values.
+Next to the Inline Editor option, slide the slider to the right so it appears Enabled. This enables the Cloud Functions editor within your Dialogflow agent.
 
-Click Refresh if it seems to be taking more than a few minutes.
+Note: If you receive an error message, try refreshing the page and then try enabling the slider again.
+Once enabled, you will notice a default template in index.js.
 
-> Note: If you see a red icon next to the other instance group that was pre-created by the lab, you can ignore this warning. The instance group reports a warning for up to 10-15 minutes as it is initializing. This is expected behavior.
+Click on the Deploy button on the bottom right. This may take a few minutes.
 
-### Task 6. Verifying that the Node.js script is running
+Once deployment is successful, go into your Google Cloud console, and using the menu on the left, navigate to Cloud Functions to confirm if the function has been deployed.
 
-The custom metric `custom.googleapis.com/appdemo_queue_depth_01` isn't created until the first instance in the group is created and that instance begins reporting custom metric values.
+Click Check my progress to verify the objective.
+Set up fulfillment using Cloud Function
 
-You can verify that the `writeToCustomMetric.js` script is running on the first instance in the instance group by checking whether the instance is logging custom metric values.
+Back in the Fulfillment section of your Dialogflow console, click on the index.js tab.
 
-Still in the **Compute Engine Instance groups** window, click the name of the `autoscaling-instance-group-1` to display the instances that are running in the group.
+Again notice that there is already some starter code, including functions to handle the default welcome and fallback intents. You will first add the following lines below to be able to work with Firestore.
 
-Scroll down and click the instance name. Because autoscaling has not started additional instances, there is just a single instance running.
+Add the following code above the line that says process.env.DEBUG = 'dialogflow:debug';:
 
-In the **Details** tab, in the **Logs** section, click the **Logging** link to view the logs for the VM instance.
+const admin = require('firebase-admin');
+Copied!
+Add this code block below the line that says process.env.DEBUG = 'dialogflow:debug';:
 
-Wait a minute or 2 to let some data accumulate. Enable the **Show query** toggle, you will see `resource.type` and `resource.labels.instance_id` in the **Query** preview box.
+admin.initializeApp();
+admin.firestore().settings( { timestampsInSnapshots: true });
+const db = admin.firestore();
+Copied!
+Now add the following code for handling or reservations after the handler functions for Welcome and Fallback intents.
+Add the following code block below the line that says
 
-Add `"nodeapp"` as line 3, so the code looks similar to this:
+exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {:
 
-```sql
-resource.type="gce.instance". 
-resource.labels.instance_id="4519089149916136834". 
-"nodeapp"
-```
+function reservation(agent) {
+	let id = agent.parameters.reservationnumber.toString();
+	let collectionRef = db.collection('reservations');
+	let userDoc = collectionRef.doc(id);
+	return userDoc.get()
+		.then(doc => {
+			if (!doc.exists) {
+				agent.add('I could not find your reservation.');
+			} else {
+				db.collection('reservations').doc(id).update({
+					newname: agent.parameters.newname
+				}).catch(error => {
+					console.log('Transaction failure:', error);
+					return Promise.reject();
+				});
+				agent.add('Ok. I have updated the name on the reservation.');
+			}
+			return Promise.resolve();
+		}).catch(() => {
+			agent.add('Error reading entry from the Firestore database.');
+		});
+}
+Copied!
+Modify the intentMap to include an entry to handle the name.reservation-getname mapping to the function you just added:
+intentMap.set('name.reservation-getname', reservation);
+Copied!
+so that it looks something like this:
 
-Click **Run query**.
+  let intentMap = new Map();
+  intentMap.set('name.reservation-getname', reservation);
+  intentMap.set('Default Welcome Intent', welcome);
+  intentMap.set('Default Fallback Intent', fallback);
+  agent.handleRequest(intentMap);
+In package.json tab make sure that firebase-admin is set to "^5.13.1":
+"firebase-admin": "^5.13.1"
+Copied!
+Click the Deploy button to save and deploy the code.
 
-If the `Node.js` script is being executed on the Compute Engine instance, a request is sent to the API, and log entries that say `nodeapp: available` is displayed.
+Click on the Intents in the left menu, and go into the name.reservation-getname inside the name.reservation intent and navigate all the way down to Fulfillment, under click the toggle switch for Enable the webhook call for this intent to enable it. Save the intent.
 
-> Note: If you don't see this log entry, the Node.js script isn't reporting the custom metric values. Check that the metadata was entered correctly. If the metadata is incorrect, it might be easiest to restart the lab. It may take around 10 minutes for the app to start up.
+Try it out in the simulator by typing out the question: change name on booking.
 
-### Task 7. Configure autoscaling for the instance groups
+You will get the default response like: Sure I can help you to change your name on the reservation. Can I have your first name?.
 
-After you've verified that the custom metric is successfully reporting data from the first instance, the instance group can be configured to autoscale based on the value of the custom metric.
+Try by entering any username you want.
 
-In the Cloud Console, go to **Compute Engine** > **Instance groups**.
+Then Try entering 100 when you get the default response asking for the reservation number.
 
-Click the `autoscaling-instance-group-1` group.
+After that enter the new name for which you want to make a reservation, for example: Kelly.
 
-Click **Edit**.
+After the successful completion, you will receive the default response like: Thank you dylan. I have changed the name on reservation number 100 to be kelly.
 
-Under **Autoscaling** set **Autoscaling mode** to **On: add and remove instances to the group**.
+You can confirm this further by going into the Cloud Console and using the left menu, navigate to Firestore > Data.
 
-Set **Minimum number of instances**: `1` and **Maximum number of instances**: `3`
+You will see the entry for your name change. Notice a new key/value pair was added, this way you can see what the original name was plus know what the new name is.
 
-Under **Autoscaling signals** click **ADD SIGNAL** to edit metric. Set the following fields, leave all others at the default value.
+new key/value pair. fname: "Isabel", lname: "costa", newname name: "kelly"
 
-- **Signal type**: `Cloud Monitoring metric new`. Click **Configure**.
+Examine the logs for code errors in your Dialogflow console. On the bottom left of the Fulfillment section, click View execution logs in the Google Cloud console to view the logs.
 
-- Under **Resource and metric** click **SELECT A METRIC** and navigate to **VM Instance** > **Custom metrics** > **Custom/appdemo_queue_depth_01**.
+Examine the logs to see if there are any errors. Click Navigation menu > Operations > Logging.
 
-- Click **Apply**.
+In the Logs Explorer, select Cloud Function > dialogflowFirebaseFulfillment. You can verify all related logs here.
 
-- **Utilization target**: `150`
+Alternatively, you can go to Navigation menu > Cloud Functions. Click LOGS inside your created function to view the logs.
 
-When custom monitoring metric values are higher or lower than the **Target** value, the autoscaler scales the managed instance group, increasing or decreasing the number of instances.
+Click Check my progress to verify the objective.
+Test the agent using Dialogflow simulator
 
-The target value can be any double value, but for this lab, the value 150 was chosen because it matches the values being reported by the custom monitoring metric.
+Task 5. (Optional) Export your code
+Export your work so you can use it in the next lab. Click on the Source tab under Cloud Functions, scroll down, and you'll see a button to Download zip.
 
-- **Utilization target type**: `Gauge`. Click **Select**.
+Export your agent
+Export your agent as a zip file so that you can import it later when you start the next lab. This way you can reuse the intents and entities you've configured so far.
 
-The **Gauge** setting specifies that the autoscaler should compute the average value of the data collected over the last few minutes and compare it to the target value.
+Click on the settings gear ⚙ icon next to your agent name in the left menu.
 
-(By contrast, setting **Target mode** to **DELTA_PER_MINUTE** or **DELTA_PER_SECOND** autoscales based on the *observed* rate of change rather than an *average* value.)
+On the settings page that opens up, go to the Export and Import tab.
 
-Click **Save**.
-
-### Task 8. Watching the instance group perform autoscaling
-
-The Node.js script varies the custom metric values it reports from each instance over time.
-
-As the value of the metric goes up, the instance group scales up by adding Compute Engine instances.
-
-If the value goes down, the instance group detects this and scales down by removing instances.
-
-As noted earlier, the script emulates a real-world metric whose value might similarly fluctuate up and down.
-
-Next, you will see how the instance group is scaling in response to the metric by clicking the **Monitoring** tab to view the **Autoscaled size** graph.
-
-- In the left pane, click **Instance groups**.
-
-- Click the `builtin-igm` instance group in the list.
-
-- Click the **Monitoring** tab.
-
-- Enable **Auto Refresh**.
-
-Since this group had a head start, you can see the autoscaling details about the instance group in the autoscaling graph.
-
-The autoscaler will take about five minutes to correctly recognize the custom metric and it can take up to 10-15 minutes for the script to generate sufficient data to trigger the autoscaling behavior.
-
-Hover your mouse over the graphs to see more details.
-
-You can switch back to the instance group that you created to see how it's doing (there may not be enough time left in the lab to see any autoscaling on your instance group).
-
-For the remainder of the time in your lab, you can watch the autoscaling graph move up and down as instances are added and removed.
-
-### Task 9. Autoscaling example
-
-Read through this autoscaling example to see how capacity and number of autoscaled instances can work in a larger environment.
-
-The number of instances depicted in the top graph changes as a result of the varying aggregate level of the custom metric property values reported in the lower graph.
-
-There is a slight delay of up to five minutes after each instance starts up before that instance begins to report its custom metric values.
-
-While your autoscaling starts up, read through this graph to understand what will be happening.
-
-The script starts by generating high values for approximately 15 minutes in order to trigger scale-up behavior.
-
-### Congratulations
+Click on Export as zip. This will download your agent into a local zip file.
 
 Congratulations!
+You have added context to your virtual agent as well as set up fulfillment to look up and store reservations entries in Firestore.
 
-In this lab, you created a Compute Engine managed instance group that autoscales based on the value of a custom Cloud Monitoring metric.
-
-You also learned how to use the Cloud Console to visualize the custom metric and instance group size.
+Google Cloud training and certification
+...helps you make the most of Google Cloud technologies. Our classes include technical skills and best practices to help you get up to speed quickly and continue your learning journey. We offer fundamental to advanced level training, with on-demand, live,

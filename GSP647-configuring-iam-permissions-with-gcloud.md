@@ -1,6 +1,10 @@
-Configuring IAM Permissions with gcloud experiment Lab schedule 1 hour 30 minutes universal_currency_alt 1 Credit show_chart Introductory info This lab may incorporate AI tools to support your learning. GSP647 Google Cloud self-paced labs logo
+# Configuring IAM Permissions with gcloud 
 
-Overview This lab looks at three common areas to understand with regards to IAM and gcloud:
+## GSP647
+
+### Overview 
+
+This lab looks at three common areas to understand with regards to IAM and gcloud:
 
 the configuration of the gcloud environment the use of multiple gcloud configurations the use of services accounts In this lab you use the gcloud CLI tool to set up and configure command features of Cloud Identity and Access Management (IAM).
 

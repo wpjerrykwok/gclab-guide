@@ -1,6 +1,9 @@
 # Migrate to Cloud SQL for PostgreSQL using Database Migration Service
+
 ## GSP918
+
 ## Overview
+
 Database Migration Service provides options for one-time and continuous jobs to migrate data to Cloud SQL using different connectivity options, including IP allowlists, VPC peering, and reverse SSH tunnels (see documentation on connectivity options at https://cloud.google.com/database-migration/docs/postgresql/configure-connectivity).
 
 In this lab, you migrate a stand-alone PostgreSQL database (running on a virtual machine) to Cloud SQL for PostgreSQL using a continuous Database Migration Service job and VPC peering for connectivity.

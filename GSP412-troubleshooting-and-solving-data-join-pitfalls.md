@@ -1,241 +1,548 @@
----
-title: "Walkthrough... Monitoring Multiple Projects with Cloud Monitoring (GSP090)"
-tags: [Google Cloud, how-to]
-style: border
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+# Troubleshooting and Solving Data Join Pitfalls
 
-# Monitoring Multiple Projects with Cloud Monitoring
-
-## GSP090
+## GSP412
 
 ### Overview
 
-Cloud Monitoring provides dashboards and alerts so you can review performance metrics for cloud services, virtual machines, and common open source servers such as MongoDB, Apache, Nginx, Elasticsearch, and more. 
+BigQuery is Google's fully managed, NoOps, low cost analytics database. 
 
-You configure Cloud Monitoring in the Console.
+With BigQuery you can query terabytes and terabytes of data without having any infrastructure to manage or needing a database administrator. 
 
-In this hands-on lab you will have 2 projects to monitor in Cloud Monitoring. 
+BigQuery uses SQL and can take advantage of the pay-as-you-go model. 
 
-You'll add them both to a Cloud Monitoring account and monitor the metrics the virtual machines in the projects provide.
+BigQuery allows you to focus on analyzing data to find meaningful insights.
 
-#### Objectives
+Joining data tables can provide meaningful insight into your dataset. 
 
-In this lab, you will learn how to:
+However, when you join your data there are common pitfalls that could corrupt your results. 
 
-- Create a Cloud Monitoring account that has two Google Cloud projects.
+This lab focuses on avoiding those pitfalls. Types of joins:
 
-- Monitor across both projects from the single Cloud Monitoring account.
+- *Cross join*: combines each row of the first dataset with each row of the second dataset, where *every combination* is represented in the output.
 
-#### Setup for two projects
+- *Inner join*: requires that key values exist in both tables for the records to appear in the results table. Records appear in the merge *only if there are matches in both tables* for the key values.
 
-For this lab you are given two Project IDs. 
+- *Left join*: *Each row in the left table* appears in the results, regardless of whether there are matches in the right table.
 
-When you logged in, by default you logged in to Project 1. 
+- *Right join*: the reverse of a left join. *Each row in the right table* appears in the results, regardless of whether there are matches in the left table.
 
-You'll need to keep track of your projects, and you can return to this page to remind yourself which is which. 
+For more information about joins, refer to the Join Page.
 
-The projects will change order, so knowing the last few digits of the name will help you identify them.
+The dataset you'll use is an ecommerce dataset that has millions of Google Analytics records for the Google Merchandise Store loaded into BigQuery. 
 
-Project 1 already has a virtual machine (and you can look at it by going to **Compute Engine** > **VM instances**). 
+You have a copy of that dataset for this lab and will explore the available fields and row for insights.
 
-You will create a virtual machine in Project 2, and then monitor both projects in Cloud Monitoring.
+For syntax information to help you follow and update the queries, see Standard SQL Query Syntax.
 
-### Task 1. Create Project 2's virtual machine
+#### What you'll do
 
-At the top of the screen, click on the dropdown arrow next to Project 1's name.
+In this lab, you learn how to:
 
-Make sure that you're on the **All** tab, then click on the name of **Project 2** to go into it.
+- Use BigQuery to explore and troubleshoot duplicate rows in a dataset.
+- Create joins between data tables.
+- Choose between different join types.
 
-Select **Navigation menu** > **Compute Engine** to open the VM instances window.
+### Task 1. Create a new dataset to store your tables
 
-Click **+Create instance** to create a new instance.
+In your BigQuery project, create a new dataset titled `ecommerce`.
 
-Name this instance **instance2**.
+Click the three dots next to your Project ID and select **Create dataset**.
 
-Select **Region** `us-west1` and **Zone** `us-west1-b`.
+The **Create dataset** dialog opens.
 
-Leave all of the options at the default settings.
+Set the **dataset ID** to `ecommerce`.
 
-Click **Create**.
+Leave the other options at their default values, and click **Create dataset**.
 
-Now you have resources to monitor in both of your projects.
+In the left pane, you see an `ecommerce` table listed under your project.
 
-> Note: Make sure that you are in Project 2 to proceed further in the lab.
+### Task 2. Pin the lab project in BigQuery
 
-#### Create a Monitoring Metrics Scope
+Scenario: Your team provides you with a new dataset on the inventory stock levels for each of your products for sale on your ecommerce website. You want to become familiar with the products on the website and the fields you could use to potentially join on to other datasets.
 
-Set up a Monitoring Metrics Scope that's tied to your Google Cloud Project. The following steps create a new account that has a free trial of Monitoring.
+The project with the new dataset is `data-to-insights`.
 
-In the Cloud Console, click **Navigation menu** > View All Products > **Monitoring**.
+Click **Navigation menu** > **BigQuery**.
 
-When the Monitoring **Overview** page opens, your metrics scope project is ready.
+The Welcome to BigQuery in the Cloud Console message box opens.
 
-Now add both projects to Monitoring.
+> Note: The Welcome to BigQuery in the Cloud Console message box provides a link to the quickstart guide and UI updates.
 
-In the left panel, click **Monitoring Settings** and then in the **Settings** window, click **+Add GCP PROJECTS** in the GCP Projects section.
+Click **Done**.
 
-Click **Select Projects**.
+BigQuery public datasets are not displayed by default. To open the public datasets project, copy `data-to-insights`.
 
-Check Project ID 1 and click **Select**.
+Click **+ Add** > **Star a project by name** then paste the `data-to-insights` name.
 
-Click **Add projects**.
+Click **Star**.
 
-### Task 2. Monitoring Overview
+The `data-to-insights` project is listed in the Explorer section.
 
-Click on **Overview** in the left menu. 
+### Task 3. Examine the fields
 
-You'll be adding a lot of good information here as the lab goes along. 
+Next, get familiar with the products and fields on the website you can use to create queries to analyze the dataset.
 
-First, you'll create a Cloud Monitoring Group for visibility across both projects.
+In the left pane in the Resources section, navigate to `data-to-insights` > `ecommerce` > `all_sessions_raw`.
 
-#### About Cloud Monitoring groups
+On the right, under the Query editor, click the **Schema** tab to see the Fields and information about each field.
 
-Cloud Monitoring lets you define and monitor groups of resources, such as VM instances, databases, and load balancers. 
+### Task 4. Identify a key field in your ecommerce dataset
 
-Groups can be based on names, tags, regions, applications, and other criteria. 
+Examine the products and fields further. 
 
-You can also create subgroups, up to six levels deep, within groups.
+You want to become familiar with the products on the website and the fields you could use to potentially join on to other datasets.
 
-#### Create a Cloud Monitoring group
+#### Examine the records
 
-In the left menu, click **Groups**, then click **+Create group**.
+In this section you find how many product names and product SKUs are on your website and whether either one of those fields is unique.
 
-Name your group `DemoGroup`.
+Find how many product names and product SKUs are on the website. **Copy and Paste** the below query in bigquery **EDITOR**:
 
-The **Criteria** is a set of rules that will dynamically evaluate which resources should be part of this group.
+```sql
+#standardSQL
+# how many products are on the website?
+SELECT DISTINCT
+productSKU,
+v2ProductName
+FROM `data-to-insights.ecommerce.all_sessions_raw`
+```
 
-Cloud Monitoring dynamically determines which resources belong to your group based on the filter criteria that you set up.
+Click **Run**.
 
-- In the first dropdown field (**Type**), **Name** is selected by default.
+Look at the pagination results in the console for the total number of records returned.
 
-- In the second dropdown (**Operator**), **Contains** is selected by default.
+But...do the results mean that there are that many unique product SKUs? 
 
-- In the third field (**Value**), type in `instance` since both of the instance names in both of your projects start with the word `instance`.
+One of the first queries you will run as a data analyst is looking at the uniqueness of your data values.
 
-Click **Done**, then click **Create**.
+Clear the previous query and run the below query to list the number of distinct SKUs are listed using `DISTINCT`:
 
-### Task 3. Uptime check for your group
+```sql
+#standardSQL
+# find the count of unique SKUs
+SELECT
+DISTINCT
+productSKU
+FROM `data-to-insights.ecommerce.all_sessions_raw`
+```
 
-Uptime checks let you quickly verify the health of any web page, instance, or group of resources. 
+#### Examine the relationship between SKU & Name
 
-Each configured check is regularly contacted from a variety of locations around the world. 
+Now determine which products have more than one SKU and which SKUs have more than one Product Name.
 
-Uptime checks can be used as conditions in alerting policy definitions.
+Clear the previous query and run the below query to determine if some product names have more than one SKU. 
 
-In the left menu, click **Uptime checks**, then click **+Create uptime check**.
+The use of the `STRING_AGG()` function to aggregate all the product SKUs that are associated with one product name into comma separated values.
 
-Create your uptime check with the following information:
+```sql
+SELECT
+  v2ProductName,
+  COUNT(DISTINCT productSKU) AS SKU_count,
+  STRING_AGG(DISTINCT productSKU LIMIT 5) AS SKU
+FROM `data-to-insights.ecommerce.all_sessions_raw`
+  WHERE productSKU IS NOT NULL
+  GROUP BY v2ProductName
+  HAVING SKU_count > 1
+  ORDER BY SKU_count DESC
+```
 
-- **Protocol**: `TCP`
+Click **Run**.
 
-- **Resource Type**: `Instance`
+The ecommerce website catalog shows that each product name may have multiple options (size, color) -- which are sold as separate SKUs.
 
-- **Applies To**: `Group`, and then select `DemoGroup`.
+So you have seen that 1 Product can have 12 SKUs. What about 1 SKU? Should it be allowed to belong to more than 1 product?
 
-- **Port**: `22`
+Clear the previous query and run the below query to find out:
 
-- **Check frequency**: `1 minute`, then click **Continue**.
+```sql
+SELECT
+  productSKU,
+  COUNT(DISTINCT v2ProductName) AS product_count,
+  STRING_AGG(DISTINCT v2ProductName LIMIT 5) AS product_name
+FROM `data-to-insights.ecommerce.all_sessions_raw`
+  WHERE v2ProductName IS NOT NULL
+  GROUP BY productSKU
+  HAVING product_count > 1
+  ORDER BY product_count DESC
+```
 
-Click **Continue** again.
+> Note: Try replacing `STRING_AGG()` with `ARRAY_AGG()` instead. Pretty cool, right? BigQuery natively supports nested array values. You can learn more from the Work with arrays guide.
 
-Leave the slider **ON** state for **Create an alert** option in **Alert & notification** section, then click **Continue**.
+You will see why this many-to-many data relationship will be an issue in the next section.
 
-For **Title**: enter `DemoGroup uptime check`.
+### Task 5. Pitfall: non-unique key
 
-Click **TEST** to verify that your uptime check can connect to the resource.
+In inventory tracking, a SKU is designed to uniquely identify one and only one product. 
 
-When you see a green check mark everything can connect, click **Create**.
+For us, it will be the basis of your JOIN condition when you lookup information from other tables. 
 
-### Task 4. Alerting policy for the group
+Having a non-unique key can cause serious data issues as you will see.
 
-Use Cloud Monitoring to create one or more alerting policies.
+**Write a query** to identify all the product names for the SKU `GGOEGPJC019099`.
 
-In the left menu, click **Uptime checks**.
+```sql
+SELECT DISTINCT
+  v2ProductName,
+  productSKU
+FROM `data-to-insights.ecommerce.all_sessions_raw`
+WHERE productSKU = 'GGOEGPJC019099'
+```
 
-Click the three dots at the far right of your Display Name and click **Add alert policy**.
+Click **Run**.
 
-Click **+Add alert condition**.
+From the query results, it looks like there are three different names for the same product. 
 
-Select the previously created **Uptime health check on DemoGroup** condition from the left section and click **Delete alert condition**.
+In this example, there is a special character in one name and a slightly different name for another:
 
-In your **New condition**, click **Select a metric**.
+#### Joining website data against your product inventory list
 
-Uncheck the **Active**.
+Now see the impact of joining on a dataset with multiple products for a single SKU. 
 
-In the **Select a metric** field, search `check_passed` and click **VM Instance** > **Uptime_check** > **Check passed**. Click **Apply**.
+First explore the product inventory dataset (the `products` table) to see if this SKU is unique there.
 
-Click **Add a filter**, set the **Filter** to `check_id` and select `demogroup-uptime-check-id` as the **Value**. Click **Done**.
+Clear the previous query and run the below query:
 
-> Note: If `demogroup-uptime-check-id` check_id is unavailable, please wait for a few seconds and try.
+```sql
+SELECT
+  SKU,
+  name,
+  stockLevel
+FROM `data-to-insights.ecommerce.products`
+WHERE SKU = 'GGOEGPJC019099'
+```
 
-In left panel, click on the arrow button next to **VM Instance-Check passed**, then click on **Configure trigger**.
+#### Join pitfall: Unintentional many-to-one SKU relationship
 
-Select **Metric absence** as Condition type and click **Next**.
+You now have two datasets: one for inventory stock level and the other for our website analytics. 
 
-Turn off **Configure notifications**.
+JOIN the inventory dataset against your website product names and SKUs so you can have the inventory stock level associated with each product for sale on the website.
 
-In the **Alert policy name** field, enter the **Name** as `Uptime Check Policy`. Click **Next**.
+Clear the previous query and run the below query:
 
-Click **Create policy**.
+```sql
+SELECT DISTINCT
+  website.v2ProductName,
+  website.productSKU,
+  inventory.stockLevel
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+JOIN `data-to-insights.ecommerce.products` AS inventory
+  ON website.productSKU = inventory.SKU
+  WHERE productSKU = 'GGOEGPJC019099'
+```
 
-### Task 5. Custom dashboard for your group
+Next, expand our previous query to simply SUM the inventory available by product.
 
-Create a custom dashboard so you can monitor your group easily.
+Clear the previous query and run the below query:
 
-In the left menu, click **Dashboards**, then click **+Create dashboard**.
+```sql
+WITH inventory_per_sku AS (
+  SELECT DISTINCT
+    website.v2ProductName,
+    website.productSKU,
+    inventory.stockLevel
+  FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+  JOIN `data-to-insights.ecommerce.products` AS inventory
+    ON website.productSKU = inventory.SKU
+    WHERE productSKU = 'GGOEGPJC019099'
+)
 
-Name your dashboard.
+SELECT
+  productSKU,
+  SUM(stockLevel) AS total_inventory
+FROM inventory_per_sku
+GROUP BY productSKU
+```
 
-Click **+Add Widget** and select **Line** option in **Visualization**.
 
-In the **Metric** field, Uncheck the **Active**.
+Oh no! It is 154 x 3 = 462 or triple counting the inventory! This is called an unintentional cross join (a topic that will be revisited later).
 
-Search **uptime** (compute.googleapis.com/instance/uptime) and click **VM Instance** > **Instance** > **Uptime**. Click **Apply**.
+### Task 6. Join pitfall solution: use distinct SKUs before joining
 
-Again click on **Apply**.
+What are the options to solve your triple counting dilemma? 
 
-### Task 6. Remove one instance to cause a problem
+First you need to only select distinct SKUs from the website before joining on other datasets.
 
-In the console, select **Navigation menu** > **Compute Engine**.
+You know that there can be more than one product name (like 7" Dog Frisbee) that can share a single SKU.
 
-Check the box next to **instance2**, then click on the 3 vertical dots at the top of the page and click **Stop**. Click **Stop** again to turn off the machine.
+Gather all the possible names into an array:
 
-Wait a minute or 2 for the instance to stop and violate the uptime check you just set up. After a couple of minutes, turn your machine back on by clicking **Start/Resume**, then **Start**.
+```sql
+SELECT
+  productSKU,
+  ARRAY_AGG(DISTINCT v2ProductName) AS push_all_names_into_array
+FROM `data-to-insights.ecommerce.all_sessions_raw`
+WHERE productSKU = 'GGOEGAAX0098'
+GROUP BY productSKU
+```
 
-Click **Navigation menu** > **Monitoring** > **Alerting** and refresh your browser. It may take a few more minutes to show that you have issues in the Summary section. Refresh until you see an Incident.
+Now instead of having a row for every Product Name, you only have a row for each unique SKU.
 
-> Optional: Using the left menu, look at **Dashboards** to view your custom dashboard. This provides details on both VMs. If you mouse over your chart, you can see which of your instances was stopped and restarted.
+If you wanted to deduplicate the product names, you could even LIMIT the array like so:
 
-#### Incidents
+```sql
+SELECT
+  productSKU,
+  ARRAY_AGG(DISTINCT v2ProductName LIMIT 1) AS push_all_names_into_array
+FROM `data-to-insights.ecommerce.all_sessions_raw`
+WHERE productSKU = 'GGOEGAAX0098'
+GROUP BY productSKU
+```
 
-When the alerting policy conditions are violated, an "incident" is created and displayed in the Incident section.
+#### Join pitfall: losing data records after a join
 
-Responders can acknowledge receipt of the notification and can close the incident when it has been taken care of.
+Now you're ready to join against your product inventory dataset again.
 
-In the **Incidents** section, click on the name of the alerting policy that was violated to go into it.
+Clear the previous query and run the below query:
 
-You've already **fixed** your problem by turning the VM back on, so the incident was cleared and you no longer see an incident in the Incidents section.
+```sql
+#standardSQL
+SELECT DISTINCT
+website.productSKU
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+JOIN `data-to-insights.ecommerce.products` AS inventory
+ON website.productSKU = inventory.SKU
+```
 
-To see the cleared incident, scroll down and click on the **Show closed incidents** link.
+It seems 819 SKUs were lost after joining the datasets Investigate by adding more specificity in your fields (one SKU column from each dataset):
 
-Your incident should have a **Closed** status. You can read through the incident details.
+Clear the previous query and run the below query:
 
-You can also click on the **Uptime Check Policy** link to explore the metrics it gives you.
+```sql
+#standardSQL
+# pull ID fields from both tables
+SELECT DISTINCT
+website.productSKU AS website_SKU,
+inventory.SKU AS inventory_SKU
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+JOIN `data-to-insights.ecommerce.products` AS inventory
+ON website.productSKU = inventory.SKU
+# IDs are present in both tables, how can you dig deeper?
+```
 
-In several more minutes the Monitoring Overview page will all go back to green when the instance in Project 2 passes the Uptime Check.
+It appears the SKUs are present in both of those datasets after the join for these 1,090 records. How can you find the missing records?
 
-### (Optional) Remove your alerting policy
+##### Join pitfall solution: selecting the correct join type and filtering for NULL
 
-If you set up an email alert as part of your alerting policy, there is a chance that you will receive a few emails about your resources even after the lab is completed.
+The default JOIN type is an INNER JOIN which returns records only if there is a SKU match on both the left and the right tables that are joined.
 
-To avoid this, remove the alerting policy before you complete your lab.
+Rewrite the previous query to use a different join type to include all records from the website table, regardless of whether there is a match on a product inventory SKU record. 
 
-### Congratulations!
+Join type options: INNER JOIN, LEFT JOIN, RIGHT JOIN, FULL JOIN, CROSS JOIN.
 
-Congratulations! 
+```sql
+#standardSQL
+# the secret is in the JOIN type
+# pull ID fields from both tables
+SELECT DISTINCT
+website.productSKU AS website_SKU,
+inventory.SKU AS inventory_SKU
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+LEFT JOIN `data-to-insights.ecommerce.products` AS inventory
+ON website.productSKU = inventory.SKU
+```
 
-In this lab, you have monitored two Google Cloud projects in Cloud Monitoring, and responded to an incident with one of the instances in the Group. 
+Click **Run**.
+You have successfully used a LEFT JOIN to return all of the original 1,909 website SKUs in your results.
 
-You also created a custom dashboard to monitor your group easily.
+How many SKUs are missing from your product inventory set?
+
+Write a query to filter on NULL values from the inventory table.
+
+```sql
+#standardSQL
+# find product SKUs in website table but not in product inventory table
+SELECT DISTINCT
+website.productSKU AS website_SKU,
+inventory.SKU AS inventory_SKU
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+LEFT JOIN `data-to-insights.ecommerce.products` AS inventory
+ON website.productSKU = inventory.SKU
+WHERE inventory.SKU IS NULL
+```
+
+Click **Run**.
+
+Question: How many products are missing?
+
+Answer: 819 products are missing (SKU IS NULL) from your product inventory dataset.
+
+Clear the previous query and run the below query to confirm using one of the specific SKUs from the website dataset:
+
+```sql
+#standardSQL
+# you can even pick one and confirm
+SELECT * FROM `data-to-insights.ecommerce.products`
+WHERE SKU = 'GGOEGATJ060517'
+# query returns zero results
+```
+
+Now, what about the reverse situation? Are there any products in the product inventory dataset but missing from the website?
+
+Write a query using a different join type to investigate.
+
+```sql
+#standardSQL
+# reverse the join
+# find records in website but not in inventory
+SELECT DISTINCT
+website.productSKU AS website_SKU,
+inventory.SKU AS inventory_SKU
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+RIGHT JOIN `data-to-insights.ecommerce.products` AS inventory
+ON website.productSKU = inventory.SKU
+WHERE website.productSKU IS NULL
+```
+
+Click **Run**.
+
+Answer: Yes. There are two product SKUs missing from the website dataset
+
+Next, add more fields from the product inventory dataset for more details.
+
+Clear the previous query and run the below query:
+
+```sql
+#standardSQL
+# what are these products?
+# add more fields in the SELECT STATEMENT
+SELECT DISTINCT
+website.productSKU AS website_SKU,
+inventory.*
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+RIGHT JOIN `data-to-insights.ecommerce.products` AS inventory
+ON website.productSKU = inventory.SKU
+WHERE website.productSKU IS NULL
+```
+
+Why would the below products be missing from the ecommerce website dataset?
+
+Possible answers:
+
+- One new product (no orders, no sentimentScore) and one product that is "in store only"
+- Another is a new product with 0 orders
+
+Why would the new product not show up on your website dataset?
+
+- The website dataset is past order transactions by customers brand new products which have never been sold won't show up in web analytics until they're viewed or purchased.
+
+> Note: You typically will not see RIGHT JOINs in production queries. You would simply just do a LEFT JOIN and switch the ordering of the tables.
+
+What if you wanted one query that listed all products missing from either the website or inventory?
+
+Write a query using a different join type.
+
+```sql
+#standardSQL
+SELECT DISTINCT
+website.productSKU AS website_SKU,
+inventory.SKU AS inventory_SKU
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+FULL JOIN `data-to-insights.ecommerce.products` AS inventory
+ON website.productSKU = inventory.SKU
+WHERE website.productSKU IS NULL OR inventory.SKU IS NULL
+```
+
+Click **Run**.
+
+You have your 819 + 2 = 821 product SKUs.
+
+LEFT JOIN + RIGHT JOIN = FULL JOIN which returns all records from both tables regardless of matching join keys. You then filter out where you have mismatches on either side
+
+#### Join pitfall: unintentional cross join
+
+Not knowing the relationship between data table keys (1:1, 1:N, N:N) can return unexpected results and also significantly reduce query performance.
+
+The last join type is the CROSS JOIN.
+
+Create a new table with a site-wide discount percent that you want applied across products in the Clearance category.
+
+Clear the previous query and run the below query:
+
+```sql
+#standardSQL
+CREATE OR REPLACE TABLE ecommerce.site_wide_promotion AS
+SELECT .05 AS discount;
+```
+
+In the left pane, `site_wide_promotion` is now listed in the Resource section under your project and dataset.
+
+Clear the previous query and run the below query to find out how many products are in clearance:
+
+```sql
+SELECT DISTINCT
+productSKU,
+v2ProductCategory,
+discount
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+CROSS JOIN ecommerce.site_wide_promotion
+WHERE v2ProductCategory LIKE '%Clearance%'
+```
+
+> Note: For a CROSS JOIN you will notice there is no join condition (e.g. ON or USING). The field is simply multiplied against the first dataset or .05 discount across all items.
+See the impact of unintentionally adding more than one record in the discount table.
+
+Clear the previous query and run the below query to insert two more records into the promotion table:
+
+```sql
+INSERT INTO ecommerce.site_wide_promotion (discount)
+VALUES (.04),
+       (.03);
+```
+
+Next, view the data values in the promotion table.
+
+Clear the previous query and run the below query:
+
+```sql
+SELECT discount FROM ecommerce.site_wide_promotion
+```
+
+How many records were returned?
+
+Answer: 3
+
+What happens when you apply the discount again across all 82 clearance products?
+
+Clear the previous query and run the below query:
+
+```sql
+SELECT DISTINCT
+productSKU,
+v2ProductCategory,
+discount
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+CROSS JOIN ecommerce.site_wide_promotion
+WHERE v2ProductCategory LIKE '%Clearance%'
+```
+
+How many products are returned?
+
+Answer: Instead of 82, you now have 246 returned which is more records than your original table started with.
+
+Now investigate the underlying cause by examining one product SKU.
+
+Clear the previous query and run the below query:
+
+```sql
+#standardSQL
+SELECT DISTINCT
+productSKU,
+v2ProductCategory,
+discount
+FROM `data-to-insights.ecommerce.all_sessions_raw` AS website
+CROSS JOIN ecommerce.site_wide_promotion
+WHERE v2ProductCategory LIKE '%Clearance%'
+AND productSKU = 'GGOEGOLC013299'
+```
+
+What was the impact of the CROSS JOIN?
+
+Answer: Since there are 3 discount codes to cross join on, you are multiplying the original dataset by 3.
+
+> Note: This behavior isn't limited to cross joins, with a normal join you can unintentionally cross join when the data relationships are many-to-many this can easily result in returning millions or even billions of records unintentionally.
+
+The solution is to know your data relationships before you join and don't assume keys are unique.
+
+### Congratulations
+
+You've concluded this lab and worked through some serious SQL join pitfalls by identifying duplicate records and knowing when to use each type of JOIN. Nice work!

@@ -1,635 +1,364 @@
----
-title: "Walkthrough... Working with JSON, Arrays, and Structs in BigQuery (GSP416)"
-tags: [Google Cloud, how-to]
-style: fille
-color: secondary
-description: Leave notes and improve lab steps if possible
----
+# Build a Website on Google Cloud: Challenge Lab
 
-# Working with JSON, Arrays, and Structs in BigQuery
+## GSP319
 
-## GSP416
+### Introduction
 
-### Overview
+In a challenge lab you’re given a scenario and a set of tasks. 
 
-BigQuery is Google's fully managed, NoOps, low cost analytics database. 
+Instead of following step-by-step instructions, you will use the skills learned from the labs in the course to figure out how to complete the tasks on your own!
 
-With BigQuery you can query terabytes and terabytes of data without having any infrastructure to manage or needing a database administrator. 
+### Challenge scenario
 
-BigQuery uses SQL and can take advantage of the pay-as-you-go model. 
+You have just started a new role at FancyStore, Inc.
 
-BigQuery allows you to focus on analyzing data to find meaningful insights.
+Your task is to take the company's existing monolithic e-commerce website and break it into a series of logically separated microservices. 
 
-In this lab, you work in-depth with semi-structured data (ingesting JSON, Array data types) inside of BigQuery. 
+The existing monolith code is sitting in a GitHub repo, and you will be expected to containerize this app and then refactor it.
 
-Denormalizing your schema into a single table with nested and repeated fields can yield performance improvements, but the SQL syntax for working with array data can be tricky. 
+You are expected to have the skills and knowledge for these tasks, so don't expect step-by-step guides.
 
-You will practice loading, querying, troubleshooting, and unnesting various semi-structured datasets.
+You have been asked to take the lead on this, after the last team suffered from monolith-related burnout and left for greener pastures (literally, they are running a lavender farm now). 
 
-#### What you'll do
+You will be tasked with pulling down the source code, building a container from it (one of the farmers left you a Dockerfile), and then pushing it out to GKE.
 
-In this lab, you learn how to:
+You should first build, deploy, and test the Monolith, just to make sure that the source code is sound. 
 
-- Load and query semi-structured data including unnesting.
+After that, you should break out the constituent services into their own microservice deployments.
 
-- Troubleshoot queries on semi-structured data.
+Some FancyStore, Inc. standards you should follow:
 
-### Task 1. Create a new dataset to store the tables
+- Create your cluster in `us-east4`
 
-In your BigQuery, click the three dots next to your Project ID and select **Create dataset**.
+- Naming is normally team-resource, e.g. an instance could be named `fancystore-orderservice1`.
 
-Name the new dataset `fruit_store`. Leave the other options at their default values (Data Location, Default Expiration).
+- Allocate cost effective resource sizes. Projects are monitored and excessive resource use will result in the containing project's termination.
 
-Click **Create dataset**.
+- Use the `e2-medium` machine type unless directed otherwise.
 
-### Task 2. Practice working with arrays in SQL
+### Setup
 
-Normally in SQL you will have a single value for each row like this list of fruits below:
+```bash
+export ZONE=
+export GOOGLE_CLOUD_PROJECT=
+export MONOLITH_IDENTIFIER=
+export CLUSTER_NAME=
+export ORDERS_IDENTIFIER=
+export PRODUCTS_IDENTIFIER=
+export FRONTEND_IDENTIFIER=
 
-Row | Fruit
-1 | raspberry
-2 | blackberry
-3 | strawberry
-4 | cherry
-
-What if you wanted a list of fruit items for each person at the store? It could look something like this:
-
-Row|Fruit|Person
-1|raspberry|sally
-2|blackberry|sally
-3|strawberry|sally
-4|cherry|sally
-5|orange|frederick
-6|apple|frederick
-
-In traditional relational database SQL, you would look at the repetition of names and immediately think of splitting the above table into two separate tables: Fruit Items and People. 
-
-That process is called normalization (going from one table to many). 
-
-This is a common approach for transactional databases like mySQL.
-
-For data warehousing, data analysts often go the reverse direction (denormalization) and bring many separate tables into one large reporting table.
-
-Now, you're going to learn a different approach that stores data at different levels of granularity all in one table using repeated fields:
-
-- It's only two rows.
-
-- There are multiple field values for Fruit in a single row.
-
-- The people are associated with all of the field values.
-
-What the key insight? The `array` data type!
-
-An easier way to interpret the Fruit array:
-
-Row|Fruit (array)|Person
-1|[raspberry, blackberry, strawberry, cherry]|sally
-2|[orange, apple]|frederick
-
-Both of these tables are exactly the same. There are two key learnings here:
-
-- An array is simply a list of items in brackets [ ]
-
-- BigQuery visually displays arrays as flattened. It simply lists the value in the array vertically (note that all of those values still belong to a single row)
-
-Enter the following in the BigQuery Query Editor:
-
-```sql
-#standardSQL
-SELECT
-['raspberry', 'blackberry', 'strawberry', 'cherry'] AS fruit_array
+gcloud services enable cloudbuild.googleapis.com
+gcloud services enable container.googleapis.com
 ```
 
-Click **Run**.
+### Task 1. Download the monolith code and build your container
 
-Now try executing this one:
+Log in to your new project and open up Cloud Shell.
 
-```sql
-#standardSQL
-SELECT
-['raspberry', 'blackberry', 'strawberry', 'cherry', 1234567] AS fruit_array
+First things first, you'll need to clone your team's git repo. 
+
+```bash
+git clone https://github.com/googlecodelabs/monolith-to-microservices.git
 ```
 
-You should get an error that looks like the following:
+There's a `setup.sh` script in the root directory of the project that you'll need to run to get your monolith container built up.
 
-Error: `Array elements of types {INT64, STRING} do not have a common supertype at [3:1]`
-
-Why did you get this error?
-
-Arrays can only share one data type (all strings, all numbers).
-
-Here's the final table to query against:
-
-```sql
-#standardSQL
-SELECT person, fruit_array, total_cost FROM `data-to-insights.advanced.fruit_store`;
+```bash
+cd ~/monolith-to-microservices
+./setup.sh
 ```
 
-Click **Run**.
+After running the `setup.sh` script, ensure your Cloud Shell is running its latest version of nodeJS:
 
-After viewing the results, click the **JSON** tab to view the nested structure of the results.
-
-#### Loading semi-structured JSON into BigQuery
-
-What if you had a JSON file that you needed to ingest into BigQuery?
-
-Create a new table `fruit_details` in the dataset.
-
-Click on `fruit_store` dataset.
-
-Now you will see the **Create Table** option.
-
-> Note: You may have to widen your browser window to see the Create table option.
-
-Add the following details for the table:
-
-- **Source**: Choose **Google Cloud Storage** in the **Create table from** dropdown.
-
-- **Select file from Cloud Storage bucket**: `data-insights-course/labs/optimizing-for-performance/shopping_cart.json`
-
-- **File format**: JSONL (Newline delimited JSON)
-
-Call the new table `fruit_details`.
-
-Check the checkbox of **Schema (Auto detect)**.
-
-Click **Create table**.
-
-In the schema, note that `fruit_array` is marked as `REPEATED` which means it's an array.
-
-Recap
-
-- BigQuery natively supports arrays
-
-- Array values must share a data type
-
-- Arrays are called REPEATED fields in BigQuery
-
-### Task 3. Create your own arrays with ARRAY_AGG()
-
-Don't have arrays in your tables already? You can create them!
-
-Copy and paste the below query to explore this public dataset:
-
-```sql
-SELECT
-fullVisitorId,
-date,
-v2ProductName,
-pageTitle
-FROM `data-to-insights.ecommerce.all_sessions`
-WHERE visitId = 1501570398
-ORDER BY date
+```bash
+nvm install --lts
 ```
 
-Click **Run** and view the results.
+There will be a few different projects that can be built and pushed.
 
-Now, use the `ARRAY_AGG()` function to aggregate our string values into an array.
+Push the monolith build (conveniently located in the `monolith` directory) up to the Artifact Registry. 
 
-**Copy and paste** the below query to explore this public dataset:
+There's a Dockerfile located in the `~/monotlith-to-microservices/monolith` folder which you can use to build the application container.
 
-```sql
-SELECT
-fullVisitorId,
-date,
-ARRAY_AGG(v2ProductName) AS products_viewed,
-ARRAY_AGG(pageTitle) AS pages_viewed
-FROM `data-to-insights.ecommerce.all_sessions`
-WHERE visitId = 1501570398
-GROUP BY fullVisitorId, date
-ORDER BY date
+You will have to run Cloud Build (in that monolith folder) to build it, then push it up to Artifact Registry.
+
+Name your artifact as follows:
+
+- Repo: `gcr.io/${GOOGLE_CLOUD_PROJECT}`
+- Image name: `fancy-monolith-521`
+- Image version: `1.0.0`
+
+> Hint: Make sure that you submit a build named `fancy-monolith-521` with a version of `1.0.0`.
+
+```bash
+cd ~/monolith-to-microservices/monolith
+gcloud builds submit --tag gcr.io/${GOOGLE_CLOUD_PROJECT}/${MONOLITH_IDENTIFIER}:1.0.0 .
 ```
 
-Click **Run** and view the results
+### Task 2. Create a kubernetes cluster and deploy the application
 
-Next, use the `ARRAY_LENGTH()` function to count the number of pages and products that were viewed:
+Now that you have the image created and sitting in the Artifact Registry, it's time to create a cluster to deploy it to.
 
-```sql
-SELECT
-fullVisitorId,
-date,
-ARRAY_AGG(v2ProductName) AS products_viewed,
-ARRAY_LENGTH(ARRAY_AGG(v2ProductName)) AS num_products_viewed,
-ARRAY_AGG(pageTitle) AS pages_viewed,
-ARRAY_LENGTH(ARRAY_AGG(pageTitle)) AS num_pages_viewed
-FROM `data-to-insights.ecommerce.all_sessions`
-WHERE visitId = 1501570398
-GROUP BY fullVisitorId, date
-ORDER BY date
+You've been told to deploy all of your resources in the `us-east4-a` zone, so first you'll need to create a GKE cluster for it. Start with a `3` node cluster to begin with.
+
+Create your cluster as follows:
+
+- Cluster name: `fancy-production-771`
+- Region: `us-east4`
+- Node count: `3`
+
+> Hint: Make sure your cluster is named fancy-production-771, and is in the running state in `us-east4`.
+
+```bash
+gcloud config set compute/zone $ZONE
+gcloud container clusters create $CLUSTER_NAME --num-nodes 3
+gcloud container clusters get-credentials $CLUSTER_NAME
 ```
 
-Next, deduplicate the pages and products so you can see how many unique products were viewed by adding `DISTINCT` to `ARRAY_AGG()`:
+Now that you've built up an image, and have a cluster up and running, it's time to deploy your application.
 
-```sql
-SELECT
-fullVisitorId,
-date,
-ARRAY_AGG(DISTINCT v2ProductName) AS products_viewed,
-ARRAY_LENGTH(ARRAY_AGG(DISTINCT v2ProductName)) AS distinct_products_viewed,
-ARRAY_AGG(DISTINCT pageTitle) AS pages_viewed,
-ARRAY_LENGTH(ARRAY_AGG(DISTINCT pageTitle)) AS distinct_pages_viewed
-FROM `data-to-insights.ecommerce.all_sessions`
-WHERE visitId = 1501570398
-GROUP BY fullVisitorId, date
-ORDER BY date
+You'll need to deploy the image that you've built onto your cluster. 
+
+This will get your application up and running, but it can't be accessed until you expose it to the outside world. 
+
+Your team has told you that the application runs on port `8080`, but you will need to expose this on a more consumer-friendly port `80`.
+
+Create and expose your deployment as follows:
+
+- Cluster name: `fancy-production-771`
+- Container name: `fancy-monolith-521`
+- Container version: `1.0.0`
+- Application port: `8080`
+- Externally accessible port: `80`
+
+> Note: For purposes of this lab, exposure of the service has been simplified. Typically, you would use an API gateway to secure your public endpoints. Learn more about best practices in the Best practices for microservices Guide.
+
+> Make note of the IP address that is assigned in the expose deployment operation. You should now be able to visit this IP address from your browser!
+
+> Hint: Make sure your deployment is named `fancy-monolith-521`, and that you have exposed the service on port `80`, and mapped it to port `8080`.
+
+```bash
+kubectl create deployment $MONOLITH_IDENTIFIER \ 
+  --image=gcr.io/${GOOGLE_CLOUD_PROJECT}/${MONOLITH_IDENTIFIER}:1.0.0
+kubectl expose deployment $MONOLITH_IDENTIFIER \ 
+  --type=LoadBalancer --port 80 --target-port 8080
 ```
 
-Recap
+Now that you can build and deploy your Fancy Store monolith application, you're ready to start breaking it down into microservices!
 
-You can do some pretty useful things with arrays like:
+#### Migrate monolith to microservices
 
-- finding the number of elements with `ARRAY_LENGTH(<array>)`
+Now that you have your existing monolith website running on GKE, you can start breaking each service into a microservice. 
 
-- deduplicating elements with `ARRAY_AGG(DISTINCT <field>)`
+Typically, a planning effort should take place on which services to break into smaller chunks, typically around specific parts of the application like business domain.
 
-- ordering elements with `ARRAY_AGG(<field> ORDER BY <field>)`
+For the purposes of this Challenge, fast forward a bit and pretend that you have successfully broken out the monolith into a series of microservices: Orders, Products, and Frontend. 
 
-- limiting `ARRAY_AGG(<field> LIMIT 5)`
+Your code is ready, so now you've got to deploy your services.
 
-### Task 4. Query tables containing arrays
+### Task 3. Create new microservices
 
-The BigQuery Public Dataset for Google Analytics `bigquery-public-data.google_analytics_sample` has many more fields and rows than our course dataset `data-to-insights.ecommerce.all_sessions`. 
+There are 3 services that need to be broken out into their own containers. 
 
-More importantly, it already stores field values like products, pages, and transactions natively as ARRAYs.
+Since you are moving all of the services into containers, you need to track the following information for each service:
 
-**Copy and paste** the below query to explore the available data and see if you can find fields with repeated values (arrays):
+- The root folder of the service (where you will build the container)
+- The repository you will upload the container to
+- The name & version of the container artifact
 
-```sql
-SELECT
-*
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`
-WHERE visitId = 1501570398
+#### Create a containerized version of your microservices
+
+Below is the set of services which need to be containerized.
+
+Navigate to the source roots mentioned below, and upload the artifacts that are created to the Artifact Registry with the metadata indicated:
+
+- Orders Microservice
+
+  - Service root folder: `~/monolith-to-microservices/microservices/src/orders`
+
+  - GCR Repo: `gcr.io/${GOOGLE_CLOUD_PROJECT}`
+
+  - Image name: `fancy-orders-496`
+
+  - Image version: `1.0.0`
+
+- Products Microservice
+
+  - Service root folder: `~/monolith-to-microservices/microservices/src/products`
+
+  - GCR Repo: `gcr.io/${GOOGLE_CLOUD_PROJECT}`
+
+  - Image name: `fancy-products-810`
+
+  - Image version: `1.0.0`
+
+Once these microservices have been containerized, and their images uploaded to Artifact Registry, you should deploy and expose these services.
+
+> Hint: Make sure that you submit a build named `fancy-orders-496` with a version of "1.0.0", AND a build named `fancy-products-810` with a version of "1.0.0".
+
+```bash
+cd ~/monolith-to-microservices/microservices/src/orders
+gcloud builds submit \ 
+  --tag gcr.io/${GOOGLE_CLOUD_PROJECT}/${ORDERS_IDENTIFIER}:1.0.0 .
 ```
 
-**Run** the query.
-
-**Scroll right** in the results until you see the `hits.product.v2ProductName` field (multiple field aliases are discussed shortly).
-
-The amount of fields available in the Google Analytics schema can be overwhelming for analysis.
-
-Try to query just the visit and page name fields like before:
-
-```sql
-SELECT
-visitId,
-hits.page.pageTitle
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`
-WHERE visitId = 1501570398
+```bash
+cd ~/monolith-to-microservices/microservices/src/products
+gcloud builds submit \ 
+  --tag gcr.io/${GOOGLE_CLOUD_PROJECT}/${PRODUCTS_IDENTIFIER}:1.0.0 .
 ```
 
-You will get an error: `Error:Cannot access field page on a value with type ARRAY<STRUCT<hitNumber INT64, time INT64, hour INT64, ...>> at [3:8]`
+### Task 4. Deploy the new microservices
 
-Before you can query `REPEATED` fields (arrays) normally, you must first break the arrays back into rows.
+Deploy these new containers following the same process that you followed for the `fancy-monolith-521` monolith. 
 
-For example, the array for `hits.page.pageTitle` is stored currently as a single row like:
+Note that these services will be listening on different ports, so make note of the port mappings in the table below.
 
-```sql
-['homepage','product page','checkout']
+Create and expose your deployments as follows:
+
+- Orders Microservice
+
+  - Cluster name: `fancy-production-771`
+
+  - Container name: `fancy-orders-496`
+
+  - Container version: `1.0.0`
+
+  - Application port: `8081`
+
+  - Externally accessible port: `80`
+
+- Products Microservice
+
+  - Cluster name: `fancy-production-771`
+
+  - Container name: `fancy-products-810`
+
+  - Container version: `1.0.0`
+
+  - Application port: `8082`
+
+  - Externally accessible port: `80`
+
+> NOTE: Please make note of the IP address of both the Orders and Products services once they have been exposed, you will need them in future steps.
+
+You can verify that the deployments were successful and that the services have been exposed by going to the following URLs in your browser:
+
+`http://ORDERS_EXTERNAL_IP/api/orders`
+
+`http://PRODUCTS_EXTERNAL_IP/api/products`
+
+You will see each service return a JSON string if the deployments were successful.
+
+> Hint: Make sure your deployments are named `fancy-orders-496` and `fancy-products-810`, and that you see the services exposed on port 80.
+
+```bash
+kubectl create deployment $ORDERS_IDENTIFIER \ 
+  --image=gcr.io/${GOOGLE_CLOUD_PROJECT}/${ORDERS_IDENTIFIER}:1.0.0
+kubectl expose deployment $ORDERS_IDENTIFIER \ 
+  --type=LoadBalancer \ 
+  --port 80 \ 
+  --target-port 8081
+kubectl get svc -w
 ```
 
-and it needs to be:
-
-```sql
-['homepage',
-'product page',
-'checkout']
+```bash
+kubectl create deployment $PRODUCTS_IDENTIFIER \ 
+  --image=gcr.io/${GOOGLE_CLOUD_PROJECT}/${PRODUCTS_IDENTIFIER}:1.0.0
+kubectl expose deployment $PRODUCTS_IDENTIFIER \ 
+  --type=LoadBalancer \ 
+  --port 80 \ 
+  --target-port 8082
+kubectl get svc -w
 ```
 
-How do you do that with SQL?
+### Task 5. Configure and deploy the Frontend microservice
 
-Answer: Use the `UNNEST()` function on your array field:
+Now that you have extracted both the Orders and Products microservice, you need to configure the Frontend service to point to them, and get it deployed.
 
-```sql
-SELECT DISTINCT
-  visitId,
-  h.page.pageTitle
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`,
-UNNEST(hits) AS h
-WHERE visitId = 1501570398
-LIMIT 10
+#### Reconfigure Frontend
+
+Use the **nano** editor to replace the local URL with the IP address of the new Products microservices:
+
+```bash
+cd ~/monolith-to-microservices/react-app
+nano .env
 ```
 
-We'll cover UNNEST() more in detail later but for now just know that:
+When the editor opens, your file should look like this:
 
-- You need to UNNEST() arrays to bring the array elements back into rows
-
-- UNNEST() always follows the table name in your FROM clause (think of it conceptually like a pre-joined table)
-
-### Task 5. Introduction to STRUCTs
-
-You may have wondered why the field alias `hit.page.pageTitle` looks like three fields in one separated by periods. 
-
-Just as ARRAY values give you the flexibility to go deep into the granularity of your fields, another data type allows you to go wide in your schema by grouping related fields together. 
-
-That SQL data type is the STRUCT data type.
-
-The easiest way to think about a STRUCT is to consider it conceptually like a separate table that is already pre-joined into your main table.
-
-A STRUCT can have:
-
-- One or many fields in it
-
-- The same or different data types for each field
-
-- It's own alias
-
-Sounds just like a table right?
-
-#### Explore a dataset with STRUCTs
-
-To open the **bigquery-public-data** dataset, click **+ADD** and then select **Star a project by name** and enter the name `bigquery-public-data`
-
-Click **Star**.
-
-The `bigquery-public-data` project is listed in the Explorer section.
-
-Open **bigquery-public-data**.
-
-Find and open **google_analytics_sample** dataset.
-
-Click the **ga_sessions(366)_** table.
-
-As you can imagine, there is an incredible amount of website session data stored for a modern ecommerce website.
-
-The main advantage of having 32 STRUCTs in a single table is it allows you to run queries like this one without having to do any JOINs:
-
-```sql
-SELECT
-  visitId,
-  totals.*,
-  device.*
-FROM `bigquery-public-data.google_analytics_sample.ga_sessions_20170801`
-WHERE visitId = 1501570398
-LIMIT 10
+```bash
+REACT_APP_ORDERS_URL=http://localhost:8081/api/orders
+REACT_APP_PRODUCTS_URL=http://localhost:8082/api/products
 ```
 
-> Note: The `.*` syntax tells BigQuery to return all fields for that STRUCT (much like it would if `totals.*` was a separate table we joined against).
+Replace the `REACT_APP_PRODUCTS_URL` to the new format while replacing with your Orders and Product microservice IP addresses so it matches below:
 
-Storing your large reporting tables as STRUCTs (pre-joined "tables") and ARRAYs (deep granularity) allows you to:
-
-- Gain significant performance advantages by avoiding 32 table JOINs
-
-- Get granular data from ARRAYs when you need it but not be punished if you don't (BigQuery stores each column individually on disk)
-
-- Have all the business context in one table as opposed to worrying about JOIN keys and which tables have the data you need
-
-### Task 6. Practice with STRUCTs and arrays
-
-The next dataset will be lap times of runners around the track. Each lap will be called a "split".
-
-With this query, try out the STRUCT syntax and note the different field types within the struct container:
-
-```sql
-#standardSQL
-SELECT STRUCT("Rudisha" as name, 23.4 as split) as runner
+```bash
+REACT_APP_ORDERS_URL=http://<ORDERS_IP_ADDRESS>/api/orders
+REACT_APP_PRODUCTS_URL=http://<PRODUCTS_IP_ADDRESS>/api/products
 ```
 
-Row|runner.name|runner.split
-1|Rudisha|23.4
+Press **CTRL+O**, press **ENTER**, then **CTRL+X** to save the file in the nano editor.
 
-What do you notice about the field aliases? Since there are fields nested within the struct (name and split are a subset of runner) you end up with a dot notation.
+Now rebuild the frontend app before containerizing it:
 
-What if the runner has multiple split times for a single race (like time per lap)?
-
-With an array of course!
-
-Run the below query to confirm:
-
-```sql
-#standardSQL
-SELECT STRUCT("Rudisha" as name, [23.4, 26.3, 26.4, 26.1] as splits) AS runner
+```bash
+npm run build
 ```
 
-To recap:
+### Task 6. Create a containerized version of the Frontend microservice
 
-- Structs are containers that can have multiple field names and data types nested inside.
+With the Orders and Products microservices now containerized and deployed, and the Frontend service configured to point to them, the final step is to containerize and deploy the Frontend.
 
-- Arrays can be one of the field types inside of a Struct (as shown above with the splits field).
+Use Cloud Build to package up the contents of the Frontend service and push it up to Artifact Registry.
 
-#### Practice ingesting JSON data
+- Service root folder: `~/monolith-to-microservices/microservices/src/frontend`
 
-Create a new dataset titled `racing`.
+- Repo: `gcr.io/${GOOGLE_CLOUD_PROJECT}`
 
-Click on `racing` dataset and click **Create table**.
+- Image name: `fancy-frontend-206`
 
-> Note: You may have to widen your browser window to see the Create table option.
+- Image version: `1.0.0`
 
-- **Source**: select **Google Cloud Storage** under **Create table from** dropdown.
+This process may take a few minutes, so be patient.
 
-- **Select file from Cloud Storage bucket**: `data-insights-course/labs/optimizing-for-performance/race_results.json`
+> Hint: Make sure that you submit a build named `fancy-frontend-206` with a version of `1.0.0`.
 
-- **File format**: JSONL (Newline delimited JSON)
-
-- In **Schema**, click on **Edit as text** slider and add the following:
-
-```json
-[
-    {
-        "name": "race",
-        "type": "STRING",
-        "mode": "NULLABLE"
-    },
-    {
-        "name": "participants",
-        "type": "RECORD",
-        "mode": "REPEATED",
-        "fields": [
-            {
-                "name": "name",
-                "type": "STRING",
-                "mode": "NULLABLE"
-            },
-            {
-                "name": "splits",
-                "type": "FLOAT",
-                "mode": "REPEATED"
-            }
-        ]
-    }
-]
+```bash
+cd ~/monolith-to-microservices/microservices/src/frontend
+gcloud builds submit \ 
+  --tag gcr.io/${GOOGLE_CLOUD_PROJECT}/${FRONTEND_IDENTIFIER}:1.0.0 .
 ```
 
-Call the new table `race_results`.
+### Task 7. Deploy the Frontend microservice
 
-Click **Create table**.
+Deploy this container following the same process that you followed for the "Orders" and "Products" microservices.
 
-After the load job is successful, preview the schema for the newly created table:
+Create and expose your deployment as follows:
 
-Which field is the STRUCT? How do you know?
+- Cluster name: `fancy-production-771`
 
-The **participants** field is the STRUCT because it is of type RECORD.
+- Container name: `fancy-frontend-206`
 
-Which field is the ARRAY?
+- Container version: `1.0.0`
 
-The `participants.splits` field is an array of floats inside of the parent `participants` struct. 
+- Application port: `8080`
 
-It has a REPEATED Mode which indicates an array. 
+- Externally accessible port: `80`
 
-Values of that array are called nested values since they are multiple values inside of a single field.
+You can verify that the deployment was successful and that the microservices have been properly exposed by hitting the following the IP address of the frontend service in your browser.
 
-#### Practice querying nested and repeated fields
+You will see the Fancy Store homepage, with links to the Products and Orders pages powered by your new microservices.
 
-Let's see all of our racers for the 800 Meter race:
-
-```sql
-#standardSQL
-SELECT * FROM racing.race_results
+```bash
+kubectl create deployment $FRONTEND_IDENTIFIER \ 
+  --image=gcr.io/${GOOGLE_CLOUD_PROJECT}/${FRONTEND_IDENTIFIER}:1.0.0
+kubectl expose deployment $FRONTEND_IDENTIFIER \ 
+  --type=LoadBalancer \ 
+  --port 80 \ 
+  --target-port 8080
+kubectl get svc -w
 ```
 
-How many rows were returned?
-
-Answer: 1
-
-What if you wanted to list the name of each runner and the type of race?
-
-Run the below schema and see what happens:
-
-```sql
-#standardSQL
-SELECT race, participants.name
-FROM racing.race_results
-```
-
-Error: `Cannot access field name on a value with type ARRAY<STRUCT<name STRING, splits ARRAY<FLOAT64>>>> at [2:27]`
-
-Much like forgetting to GROUP BY when you use aggregation functions, here there are two different levels of granularity. 
-
-One row for the race and three rows for the participants names. So how do you change this...
-
-Row|race|participants.name
-1|800M|Rudisha
-2|???|Makhloufi
-3|???|Murphy
-
-...to this:
-
-Row|race|participants.name
-1|800M|Rudisha
-2|800M|Makhloufi
-3|800M|Murphy
-
-In traditional relational SQL, if you had a races table and a participants table what would you do to get information from both tables? 
-
-You would JOIN them together. 
-
-Here the participant STRUCT (which is conceptually very similar to a table) is already part of your races table but is not yet correlated correctly with your non-STRUCT field "race".
-
-Can you think of what two word SQL command you would use to correlate the 800M race with each of the racers in the first table?
-
-Answer: CROSS JOIN
-
-Great!
-
-Now try running this:
-
-```sql
-#standardSQL
-SELECT race, participants.name
-FROM racing.race_results
-CROSS JOIN
-participants  # this is the STRUCT (it is like a table within a table)
-```
-
-`Table name "participants" missing dataset while no default dataset is set in the request.`
-
-Even though the participants STRUCT is like a table, it is still technically a field in the `racing.race_results` table.
-
-Add the dataset name to the query:
-
-```sql
-#standardSQL
-SELECT race, participants.name
-FROM racing.race_results
-CROSS JOIN
-race_results.participants # full STRUCT name
-```
-
-And click **Run**.
-
-Wow! You've successfully listed all of the racers for each race!
-
-You can simplify the last query by:
-
-- Adding an alias for the original table
-
-- Replacing the words "CROSS JOIN" with a comma (a comma implicitly cross joins)
-
-This will give you the same query result:
-
-```sql
-#standardSQL
-SELECT race, participants.name
-FROM racing.race_results AS r, r.participants
-```
-
-If you have more than one race type (800M, 100M, 200M), wouldn't a CROSS JOIN just associate every racer name with every possible race like a cartesian product?
-
-Answer: No. This is a correlated cross join which only unpacks the elements associated with a single row. For a greater discussion, see working with ARRAYs and STRUCTs
-
-Recap of STRUCTs:
-
-- A SQL STRUCT is simply a container of other data fields which can be of different data types. The word struct means data structure. Recall the example from earlier: `STRUCT(``"Rudisha" as name, [23.4, 26.3, 26.4, 26.1] as splits``)`` AS runner`
-
-- STRUCTs are given an alias (like runner above) and can conceptually be thought of as a table inside of your main table.
-
-- STRUCTs (and ARRAYs) must be unpacked before you can operate over their elements. Wrap an UNNEST() around the name of the struct itself or the struct field that is an array in order to unpack and flatten it.
-
-### Task 7. Lab question: STRUCT()
-
-Answer the below questions using the `racing.race_results` table you created previously.
-
-Task: Write a query to COUNT how many racers were there in total.
-
-> Note: Remember you will need to cross join in your struct name as an additional data source after the FROM.
-
-```sql
-#standardSQL
-SELECT COUNT(p.name) AS racer_count
-FROM racing.race_results AS r, UNNEST(r.participants) AS p
-```
-
-Answer: There were 8 racers who ran the race.
-
-### Task 8. Lab question: Unpacking arrays with UNNEST( )
-
-Write a query that will list the total race time for racers whose names begin with R. 
-
-Order the results with the fastest total time first. 
-
-Use the UNNEST() operator and start with the partially written query below.
-
-> Note: You will need to unpack both the struct and the array within the struct as data sources after your FROM clause. Be sure to use aliases where appropriate.
-
-```sql
-#standardSQL
-SELECT
-  p.name,
-  SUM(split_times) as total_race_time
-FROM racing.race_results AS r
-, UNNEST(r.participants) AS p
-, UNNEST(p.splits) AS split_times
-WHERE p.name LIKE 'R%'
-GROUP BY p.name
-ORDER BY total_race_time ASC;
-```
-
-### Task 9. Filter within array values
-
-You happened to see that the fastest lap time recorded for the 800 M race was 23.2 seconds, but you did not see which runner ran that particular lap.
-
-Create a query that returns that result.
-
-```sql
-#standardSQL
-SELECT
-  p.name,
-  split_time
-FROM racing.race_results AS r
-, UNNEST(r.participants) AS p
-, UNNEST(p.splits) AS split_time
-WHERE split_time = 23.2;
-```
-
-### Congratulations!
-
-You've successfully ingested JSON datasets, created ARRAYs and STRUCTs, and unnested semi-structured data for insights.
+Congratulations!
